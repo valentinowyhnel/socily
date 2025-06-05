@@ -1,0 +1,178 @@
+# /infrastructure/kubernetes/deployment.yaml
+# Placeholder for Kubernetes Deployments.
+# This is a generic template. You will need to create specific deployment files
+# for each component of the ZT Immune System (e.g., IA Principale, Mini Agents, Dashboard Backend).
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zt-component-placeholder-deployment # Example: zt-ia-principale-api-deployment
+  namespace: zt-immune-system # Assuming all components are in this namespace
+  labels:
+    app: zt-immune-system-component # Common label for all ZT components
+    role: component-role-placeholder # Example: ia-principale-api, mini-agent-detection, dashboard-backend
+    tier: backend # Example: frontend, backend, messaging, agent
+spec:
+  replicas: 2 # Adjust as needed for HA and scaling
+  selector:
+    matchLabels:
+      app: zt-immune-system-component
+      role: component-role-placeholder # Must match labels in template.spec.metadata.labels
+  template:
+    metadata:
+      labels:
+        app: zt-immune-system-component
+        role: component-role-placeholder # Labels for the Pods themselves
+        tier: backend
+      annotations:
+        # Example annotation for linking to monitoring or other metadata
+        "prometheus.io/scrape": "true"
+        "prometheus.io/port": "8000" # If the app exposes metrics on this port
+    spec:
+      # serviceAccountName: zt-component-serviceaccount # Specify if using custom ServiceAccount (see rbac.yaml)
+      # automountServiceAccountToken: false # Recommended for security if pod doesn't need to talk to K8s API
+
+      # --- Security Context for Pods ---
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001 # Example user ID (ensure your container image supports this)
+        runAsGroup: 1001 # Example group ID
+        fsGroup: 1001    # FSGroup for volume permissions
+        # seccompProfile: # Applied if not using PodSecurityPolicy or a higher-level admission controller
+        #   type: Localhost # Or RuntimeDefault
+        #   localhostProfile: seccomp_profile.json # Path to seccomp profile within the node, or use SecurityProfile field in newer K8s
+
+      containers:
+        - name: zt-component-container # Example: ia-principale-api-container
+          image: your-repo/zt-component-image:latest # Replace with your actual image path and tag
+          imagePullPolicy: IfNotPresent # Or Always, Never
+
+          # --- Security Context for Container ---
+          securityContext:
+            allowPrivilegeEscalation: false
+            # readOnlyRootFilesystem: true # If possible for the application
+            capabilities:
+              drop:
+                - ALL # Drop all capabilities first
+              # add: # Then add only specific capabilities needed (e.g., NET_BIND_SERVICE if port < 1024 and not runAsRoot)
+                # - NET_BIND_SERVICE
+            # seccompProfile (alternative location for newer K8s, preferred over pod-level if per-container)
+            #   type: RuntimeDefault # Or Localhost with localhostProfile: 'profiles/my-component-seccomp.json'
+
+          ports:
+            - name: http # Or a more specific name like 'api-port', 'metrics-port'
+              containerPort: 8000 # Port the application listens on inside the container
+              protocol: TCP
+            # - name: kafka-internal # Example if this pod was a kafka client directly (less common for API)
+            #   containerPort: 9092
+            #   protocol: TCP
+
+          env:
+            - name: APP_ENV
+              value: "production"
+            - name: LOG_LEVEL
+              value: "info"
+            # Example for secrets (use Kubernetes Secrets, not plain env vars for sensitive data)
+            # - name: DATABASE_PASSWORD
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: my-database-secret
+            #       key: password
+            # Example for config maps
+            # - name: CONFIG_SETTING_X
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: my-component-config
+            #       key: setting_x.yaml
+
+          # --- Liveness, Readiness, and Startup Probes ---
+          # livenessProbe:
+          #   httpGet:
+          #     path: /healthz # Or your app's health check endpoint
+          #     port: http # Refers to the port name defined above
+          #   initialDelaySeconds: 15
+          #   periodSeconds: 20
+          #   timeoutSeconds: 5
+          #   failureThreshold: 3
+          # readinessProbe:
+          #   httpGet:
+          #     path: /readyz # Or your app's readiness endpoint
+          #     port: http
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 10
+          #   timeoutSeconds: 5
+          #   failureThreshold: 3
+          # startupProbe: # Useful for apps that take longer to start
+          #   httpGet:
+          #     path: /startupz
+          #     port: http
+          #   failureThreshold: 30
+          #   periodSeconds: 10
+
+
+          # --- Resource Requests and Limits ---
+          # Set these based on application needs and cluster capacity planning.
+          # resources:
+          #   requests:
+          #     memory: "128Mi"
+          #     cpu: "250m" # 0.25 CPU core
+          #   limits:
+          #     memory: "256Mi"
+          #     cpu: "500m"
+
+          # --- Volume Mounts (if needed) ---
+          # volumeMounts:
+          #   - name: config-volume
+          #     mountPath: /etc/app/config
+          #     readOnly: true
+          #   - name: persistent-storage # For stateful data
+          #     mountPath: /var/lib/app/data
+          #   - name: docker-sock-ro # Example: if an agent needs to inspect docker (read-only)
+          #     mountPath: /var/run/docker.sock
+          #     readOnly: true # Critical for security
+
+      # --- Volumes (defined at pod level) ---
+      # volumes:
+      #   - name: config-volume
+      #     configMap:
+      #       name: my-component-config # Name of your ConfigMap
+      #   - name: persistent-storage
+      #     persistentVolumeClaim:
+      #       claimName: my-component-pvc # Name of your PersistentVolumeClaim for stateful data
+      #   - name: docker-sock-ro # For mounting docker socket (use with extreme caution)
+      #     hostPath:
+      #       path: /var/run/docker.sock
+      #       type: Socket
+
+      # --- Image Pull Secrets (if using private registry) ---
+      # imagePullSecrets:
+      #   - name: my-registry-key
+
+      # --- Node Selector/Affinity/Tolerations (for advanced scheduling) ---
+      # nodeSelector:
+      #   disktype: ssd
+      # affinity:
+      #   nodeAffinity:
+      #     requiredDuringSchedulingIgnoredDuringExecution:
+      #       nodeSelectorTerms:
+      #       - matchExpressions:
+      #         - key: kubernetes.io/arch
+      #           operator: In
+      #           values:
+      #           - amd64
+      #           - arm64
+      # tolerations:
+      # - key: "key"
+      #   operator: "Equal"
+      #   value: "value"
+      #   effect: "NoSchedule"
+
+# Notes:
+# - Replace placeholder values (names, labels, image paths, ports, etc.) with specifics for each component.
+# - Define appropriate liveness, readiness, and startup probes for each application.
+# - Set resource requests and limits based on application profiling and cluster capacity.
+# - Use Kubernetes Secrets for sensitive data, not plain environment variables.
+# - Apply the 'app: zt-immune-system-component' label and a specific 'role' label to your pods
+#   for NetworkPolicies and Service selectors to work correctly.
+# - This template includes many commented-out sections for common configurations. Uncomment and adapt as needed.
+# - For Seccomp, ensure the seccomp_profile.json is available on the nodes or use the newer PodSecurity Admission or equivalent.

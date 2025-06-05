@@ -1,0 +1,27 @@
+# /infrastructure/docker/selinux_policy.te
+# Placeholder SELinux Type Enforcement (.te) file for a ZT Immune System Agent.
+# Writing SELinux policies is complex and highly specific to the application and base OS policy.
+# This is a conceptual outline and not a functional policy without significant additions.
+
+# Minimal content for a placeholder:
+module zt_agent_placeholder_policy 1.0;
+
+type zt_agent_placeholder_t;
+type zt_agent_placeholder_exec_t;
+
+# This line is a very high-level macro that sets up a domain for a container.
+# It's a common starting point when using reference policy.
+# In a real scenario, you'd need to ensure your base OS policy has 'container_domain'.
+# require { type container_t; } # This might be needed if container_domain isn't self-contained.
+# container_domain(zt_agent_placeholder_t, zt_agent_placeholder_exec_t)
+
+# Allow basic execution
+# allow zt_agent_placeholder_t zt_agent_placeholder_exec_t:file entrypoint;
+
+# Add a comment indicating this is a placeholder and needs real development.
+# Further rules would be needed based on agent activity.
+# Example: allow zt_agent_placeholder_t self:tcp_socket { create connect listen accept };
+# Example: allow zt_agent_placeholder_t var_log_t:file { read open getattr };
+
+# This policy is non-functional and serves only as a structural placeholder.
+# Effective SELinux policy development requires deep expertise and testing.

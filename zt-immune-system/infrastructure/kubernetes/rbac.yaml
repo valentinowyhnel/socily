@@ -1,0 +1,120 @@
+# /infrastructure/kubernetes/rbac.yaml
+# Placeholder for Kubernetes RBAC (Role-Based Access Control) configurations.
+# Define ServiceAccounts for your pods and Roles/ClusterRoles with necessary permissions,
+# then bind them using RoleBindings/ClusterRoleBindings.
+
+# --- ServiceAccount Example ---
+# It's good practice for pods to run with specific ServiceAccounts rather than the default.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: zt-ia-principale-sa # Example: ServiceAccount for IA Principale components
+  namespace: zt-immune-system # Assuming all components are in this namespace
+  labels:
+    app: zt-immune-system-component
+    # Add other relevant labels
+
+# automountServiceAccountToken: false # Optionally set this to false in the SA if most pods don't need it,
+                                   # and then explicitly enable it for pods that do.
+                                   # Or set it in the Pod spec (Deployment).
+
+---
+# --- Role Example (Namespace-specific permissions) ---
+# A Role grants permissions within a specific namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: zt-immune-system
+  name: zt-configmap-reader-role # Example: Role to read ConfigMaps
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources: ["configmaps", "secrets"] # Can list multiple resources
+  verbs: ["get", "watch", "list"] # Permissions
+# - apiGroups: ["apps"]
+#   resources: ["deployments"]
+#   resourceNames: ["my-specific-deployment"] # Can restrict to specific resource instances
+#   verbs: ["get", "update"]
+
+---
+# --- RoleBinding Example (Binds a Role to a ServiceAccount within a namespace) ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zt-ia-principale-read-configmaps-binding
+  namespace: zt-immune-system
+subjects:
+- kind: ServiceAccount
+  name: zt-ia-principale-sa # Name of the ServiceAccount
+  namespace: zt-immune-system # Namespace of the ServiceAccount
+roleRef:
+  kind: Role # Can be Role or ClusterRole
+  name: zt-configmap-reader-role # Name of the Role created above
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# --- ClusterRole Example (Cluster-wide permissions) ---
+# A ClusterRole grants permissions across all namespaces. Use with caution.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  # namespace: not needed for ClusterRoles
+  name: zt-node-reader-clusterrole # Example: ClusterRole to read node information
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "namespaces"]
+  verbs: ["get", "watch", "list"]
+# - nonResourceURLs: ["/metrics"] # For accessing non-resource paths like /metrics
+#   verbs: ["get"]
+
+---
+# --- ClusterRoleBinding Example (Binds a ClusterRole to a ServiceAccount cluster-wide) ---
+# This grants the ServiceAccount zt-ia-principale-sa the permissions defined in
+# zt-node-reader-clusterrole across all namespaces.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: zt-ia-principale-read-nodes-clusterbinding
+subjects:
+- kind: ServiceAccount
+  name: zt-ia-principale-sa
+  namespace: zt-immune-system # Namespace of the ServiceAccount
+roleRef:
+  kind: ClusterRole
+  name: zt-node-reader-clusterrole # Name of the ClusterRole created above
+  apiGroup: rbac.authorization.k8s.io
+
+# --- Example: Allowing a specific ServiceAccount to manage Custom Resources (CRDs) ---
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: ClusterRole
+# metadata:
+#   name: zt-crd-manager-clusterrole
+# rules:
+# - apiGroups: ["yourcustomgroup.com"] # The API group of your CRD
+#   resources: ["yourcustomresources", "yourcustomresources/status"]
+#   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# ---
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: ClusterRoleBinding
+# metadata:
+#   name: zt-ia-principale-manage-crds-clusterbinding
+# subjects:
+# - kind: ServiceAccount
+#   name: zt-ia-principale-sa # Assuming IA Principale manages these CRDs
+#   namespace: zt-immune-system
+# roleRef:
+#   kind: ClusterRole
+#   name: zt-crd-manager-clusterrole
+#   apiGroup: rbac.authorization.k8s.io
+
+
+# Notes on RBAC Best Practices:
+# - Principle of Least Privilege: Grant only the permissions necessary for each component.
+# - Use Roles for namespace-specific permissions and ClusterRoles for cluster-wide permissions.
+#   Prefer Roles where possible.
+# - Assign permissions to ServiceAccounts that your Pods will use, not directly to users or groups for application workloads.
+# - Regularly review and audit RBAC policies.
+# - Avoid granting wildcard ("*") permissions for resources or verbs unless absolutely necessary and well-understood.
+# - Be specific with `resourceNames` if a role only needs to access particular instances of a resource.
+# - For each of your Deployments, ensure you set `spec.template.spec.serviceAccountName` to the
+#   appropriate ServiceAccount you've defined. If not set, it uses the 'default' ServiceAccount
+#   in the namespace, which might have broader or insufficient permissions.

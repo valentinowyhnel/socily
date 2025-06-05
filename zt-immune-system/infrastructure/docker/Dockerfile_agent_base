@@ -1,0 +1,114 @@
+# /infrastructure/docker/Dockerfile_agent_base
+# Placeholder Dockerfile for a base ZT Immune System Agent.
+# This should be adapted for specific agent types (detection, response, learning, etc.)
+
+# --- Stage 1: Builder (Optional, for compiled languages or multi-stage builds) ---
+# FROM golang:1.19-alpine as builder
+# WORKDIR /app
+# COPY . .
+# RUN go build -o /app/agent_binary ./cmd/agent_main
+
+# --- Stage 2: Final Image ---
+# Choose a minimal base image appropriate for your agent's language/runtime.
+# Examples:
+# - python:3.9-slim-bullseye (for Python agents)
+# - alpine:latest (very minimal, may need more packages)
+# - debian:bullseye-slim
+# - ubuntu:22.04 (larger, but might have more tools out of the box)
+FROM python:3.9-slim-bullseye
+LABEL maintainer="ZT Immune System Team <dev@example.com>"
+LABEL description="Base image for ZT Immune System Agents (Placeholder)"
+
+# --- Environment Variables ---
+ENV APP_HOME=/opt/zt_agent
+ENV PYTHONUNBUFFERED=1 # Ensures Python output (print statements) is sent directly to terminal/logs
+ENV PATH="${APP_HOME}/bin:${PATH}" # If you have scripts in a custom bin
+
+# Set a non-root user for security
+# Create a group and user. Ensure the UID/GID are consistent or managed if using FS mounts.
+ARG USER_ID=1001
+ARG GROUP_ID=1001
+RUN groupadd --system --gid ${GROUP_ID} zt_agent_group && \
+    useradd --system --uid ${USER_ID} --gid zt_agent_group --home-dir ${APP_HOME} --shell /sbin/nologin zt_agent_user
+
+WORKDIR ${APP_HOME}
+
+# --- Install System Dependencies ---
+# Install only necessary packages.
+# Remember to clean up apt cache to keep image size small.
+# RUN apt-get update && \
+#     apt-get install -y --no-install-recommends \
+#     # Example packages:
+#     # curl \
+#     # net-tools \ # For debugging, remove in production
+#     # procps \    # For ps, top, remove in production
+#     # ca-certificates \ # For HTTPS connections
+#     # tini \      # A minimal init system for zombie reaping, good for entrypoint
+#     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# --- Install Application Dependencies (e.g., Python packages) ---
+# Copy requirements file first to leverage Docker layer caching.
+COPY ./requirements_agent_base.txt /tmp/requirements_agent_base.txt
+# RUN pip install --no-cache-dir -r /tmp/requirements_agent_base.txt && \
+#     rm /tmp/requirements_agent_base.txt
+# Note: requirements_agent_base.txt would need to be created and populated.
+# For specific agents, you might have agent_detection_requirements.txt, etc.
+
+# --- Copy Application Code ---
+# Assuming your agent code is in a subdirectory relative to this Dockerfile's context.
+# Example: If Docker build context is /zt-immune-system/, and agent code is in /zt-immune-system/mini_agents/agent_detection/
+# COPY ./mini_agents/agent_detection ${APP_HOME}/agent_code
+# For a truly generic base, you might not copy specific agent code here,
+# but rather expect derived Dockerfiles to do so.
+# This placeholder will copy a conceptual 'agent_src' directory.
+COPY ./agent_src ${APP_HOME}/agent_src
+# Ensure correct ownership if files are copied as root
+RUN chown -R zt_agent_user:zt_agent_group ${APP_HOME}
+
+# --- Set up necessary directories or permissions (if any) ---
+# RUN mkdir -p ${APP_HOME}/logs && \
+#     chown zt_agent_user:zt_agent_group ${APP_HOME}/logs && \
+#     mkdir -p ${APP_HOME}/tmp && \
+#     chown zt_agent_user:zt_agent_group ${APP_HOME}/tmp
+
+# --- Healthcheck (Optional but recommended) ---
+# HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+#   CMD [ "python", "-m", "http.server", "8080" ] # Replace with actual healthcheck command for your agent
+
+# --- User and Entrypoint/CMD ---
+USER zt_agent_user
+
+# ENTRYPOINT ["tini", "--"] # Use tini as init system if installed
+# CMD ["python", "agent_src/main.py"] # Default command to run
+# Or, for a more generic base, this CMD might be just "bash" or not set,
+# expecting derived Dockerfiles to set it.
+CMD ["echo", "Agent base Dockerfile - please specify CMD in derived image or run with arguments."]
+
+
+# --- Build Instructions (Conceptual) ---
+# To build this (assuming context is project root and this file is infrastructure/docker/Dockerfile_agent_base):
+# 1. Create a dummy requirements_agent_base.txt: `echo "fastapi" > requirements_agent_base.txt`
+# 2. Create a dummy agent_src dir and file: `mkdir agent_src && echo "print('hello agent')" > agent_src/main.py`
+# 3. Build:
+#    docker build -f infrastructure/docker/Dockerfile_agent_base -t zt-agent-base:latest .
+#
+# For a specific agent (e.g., detection agent):
+# You would create a new Dockerfile like `infrastructure/docker/agents/Dockerfile_agent_detection`
+# that starts with `FROM zt-agent-base:latest` and then copies its specific code and dependencies.
+# Example:
+#   FROM zt-agent-base:latest
+#   COPY ./mini_agents/agent_detection/ /opt/zt_agent/agent_code/
+#   COPY ./mini_agents/agent_detection_requirements.txt /tmp/
+#   RUN pip install --no-cache-dir -r /tmp/agent_detection_requirements.txt && rm /tmp/agent_detection_requirements.txt
+#   CMD ["python", "agent_code/detector.py"]
+
+# Notes:
+# - Minimize layers: Combine RUN commands where possible.
+# - Security:
+#   - Run as non-root user.
+#   - Do not install unnecessary packages.
+#   - Consider tools like Dive to inspect and reduce image size.
+#   - Use specific versions for base images and packages for reproducible builds.
+#   - Scan your images for vulnerabilities (e.g., Trivy, Clair).
+# - This is a BASE Dockerfile. Specific agents (detection, response, etc.) should ideally
+#   have their own Dockerfiles that `FROM` this base image and add their specific code/dependencies.

@@ -1,0 +1,77 @@
+# /infrastructure/kubernetes/service.yaml
+# Placeholder for Kubernetes Services.
+# You will need to create specific service files for components that need to be exposed
+# within the cluster (e.g., IA Principale API, Kafka, Dashboard Backend) or externally (e.g., Dashboard Frontend).
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: zt-component-placeholder-service # Example: zt-ia-principale-api-service
+  namespace: zt-immune-system # Assuming all components are in this namespace
+  labels:
+    app: zt-immune-system-component # Common label, matches the Deployment/Pod selector
+    role: component-role-placeholder # Role of the component this service exposes
+    tier: backend # Example: frontend, backend, messaging
+  # annotations:
+    # Example for Prometheus if metrics are exposed through this service
+    # "prometheus.io/scrape": "true"
+    # "prometheus.io/port": "http" # Refers to the port name below
+    # Example for cloud-specific load balancer configuration (if type: LoadBalancer)
+    # "service.beta.kubernetes.io/aws-load-balancer-type": "nlb"
+spec:
+  # type: ClusterIP # Default. Exposes the service on an internal IP in the cluster.
+                  # Use this for internal services not exposed externally.
+  # type: NodePort  # Exposes the service on each Node's IP at a static port.
+                  # Useful for development or when you need a fixed port externally before setting up an Ingress.
+  type: LoadBalancer # Exposes the service externally using a cloud provider's load balancer.
+                    # Typically used for user-facing services like the Dashboard Frontend.
+                    # This often provisions an external IP.
+  # type: ExternalName # Maps the service to the contents of the externalName field (e.g., a DNS name).
+                     # Used for providing an internal alias to an external service.
+
+  selector:
+    app: zt-immune-system-component
+    role: component-role-placeholder # This MUST match the labels of the Pods you want this service to target (from your Deployment).
+    # tier: backend # Ensure this matches the pod labels if you use it in the selector.
+
+  ports:
+    - name: http # Or a more descriptive name like 'api', 'web', 'kafka-client'
+      protocol: TCP
+      port: 80 # Port on which the service is exposed (within the cluster for ClusterIP/NodePort, or on LB)
+      targetPort: 8000 # Port on the Pods that this service routes traffic to (must match containerPort in Deployment)
+                       # Can be a number (like 8000) or a port name (like 'http' if named in Deployment's containerPort)
+      # nodePort: 30080 # If type is NodePort, you can specify a port (optional, K8s will assign one if not specified).
+                       # Range is typically 30000-32767.
+
+    # Example for another port if the service exposes multiple
+    # - name: https
+    #   protocol: TCP
+    #   port: 443
+    #   targetPort: 8443
+    #   # nodePort: 30443
+
+    # Example for Kafka (if this service was for Kafka brokers)
+    # - name: kafka
+    #   protocol: TCP
+    #   port: 9092       # External port for clients to connect to Kafka via this service
+    #   targetPort: 9092 # Port on the Kafka broker pods
+
+  # --- Optional settings ---
+  # sessionAffinity: ClientIP # Or None (default). To direct traffic from a particular client to the same pod.
+  # externalTrafficPolicy: Cluster # Or Local. For LoadBalancer/NodePort, 'Local' preserves client source IP.
+
+  # For type: LoadBalancer, you might specify loadBalancerIP or loadBalancerSourceRanges
+  # loadBalancerIP: "your.static.ip.address" # If your cloud provider supports assigning a specific static IP
+  # loadBalancerSourceRanges: # Whitelist IP ranges that can access the LoadBalancer
+  #   - "192.0.2.0/24"
+  #   - "203.0.113.5/32"
+
+# Notes:
+# - Replace placeholder values (name, labels, selector, ports, type) with specifics for each component.
+# - The `selector` in the Service MUST match the labels of the Pods defined in your Deployment.
+# - `port` is the port the Service itself listens on.
+# - `targetPort` is the port on the container/Pod that the Service forwards traffic to.
+# - Choose the `type` of Service based on whether the component needs to be accessed internally,
+#   on each node, or externally via a load balancer.
+# - For services of type LoadBalancer, specific annotations might be needed for your cloud provider
+#   to configure the load balancer correctly (e.g., SSL termination, health check paths, timeouts).
