@@ -1,0 +1,21 @@
+# logstash/patterns/grok-patterns
+# Add your custom Grok patterns here.
+# These can be used in the grok filter plugin in your Logstash pipelines.
+
+# Example: Pattern for ZT Agent custom log format
+# ZT_AGENT_LOG: agent_id=agent_det_001 event_type=MEMORY_SCAN result=MALWARE_DETECTED details="Pattern XYZ found"
+ZTAGENTLOGLINE ZT_AGENT_LOG: agent_id=%{NOTSPACE:zt_agent.id} event_type=%{WORD:zt_agent.event_type} result=%{WORD:zt_agent.result} details="%{GREEDYDATA:zt_agent.details}"
+
+# Example: More specific timestamp if needed
+CUSTOM_TIMESTAMP %{YEAR}-%{MONTHNUM}-%{MONTHDAY} %{HOUR}:%{MINUTE}:%{SECOND}
+
+# Example: Key-Value pair parser (simple)
+KEYVALUEPAIR %{WORD:key}=%{QS:value} # QS is Quoted String, or use NOTSPACE for unquoted
+# You can then use this in a grok filter with repetition: %{KEYVALUEPAIR:kv_field_1} %{KEYVALUEPAIR:kv_field_2} ...
+
+# Remember to specify the path to this patterns file in your grok filter configuration
+# if it's not in the default Logstash patterns directory.
+# grok {
+#   patterns_dir => ["/path/to/custom_patterns_directory"]
+#   match => { "message" => "%{ZTAGENTLOGLINE}" }
+# }

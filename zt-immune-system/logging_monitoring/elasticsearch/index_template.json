@@ -1,0 +1,154 @@
+{
+  "index_patterns": ["zt-*", "wazuh-alerts-*", "logs-*"],
+  "priority": 500,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 1,
+      "index.lifecycle.name": "zt_ilm_policy_name",
+      "index.lifecycle.rollover_alias": "zt-logs-alias"
+    },
+    "mappings": {
+      "_source": {
+        "enabled": true
+      },
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "message": { "type": "text", "norms": false },
+        "ecs": {
+          "properties": {
+            "version": { "type": "keyword" }
+          }
+        },
+        "log": {
+          "properties": {
+            "level": { "type": "keyword" },
+            "logger": { "type": "keyword" },
+            "origin": {
+              "properties": {
+                "file": {
+                  "properties": {
+                    "line": { "type": "integer" },
+                    "name": { "type": "keyword" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "event": {
+          "properties": {
+            "action": { "type": "keyword" },
+            "category": { "type": "keyword" },
+            "created": { "type": "date" },
+            "dataset": { "type": "keyword" },
+            "duration": { "type": "long" },
+            "end": { "type": "date" },
+            "hash": { "type": "keyword" },
+            "id": { "type": "keyword" },
+            "ingested": { "type": "date" },
+            "kind": { "type": "keyword" },
+            "module": { "type": "keyword" },
+            "original": { "type": "text" },
+            "outcome": { "type": "keyword" },
+            "provider": { "type": "keyword" },
+            "reason": { "type": "text" },
+            "risk_score": { "type": "float" },
+            "risk_score_norm": { "type": "float" },
+            "sequence": { "type": "long" },
+            "severity": { "type": "long" },
+            "start": { "type": "date" },
+            "timezone": { "type": "keyword" },
+            "type": { "type": "keyword" }
+          }
+        },
+        "agent": {
+          "properties": {
+            "id": { "type": "keyword" },
+            "name": { "type": "keyword" },
+            "type": { "type": "keyword" },
+            "version": { "type": "keyword" }
+          }
+        },
+        "client": {
+          "properties": {
+            "address": { "type": "keyword" },
+            "ip": { "type": "ip" },
+            "port": { "type": "long" },
+            "domain": { "type": "keyword" },
+            "mac": { "type": "keyword" }
+          }
+        },
+        "server": {
+          "properties": {
+            "address": { "type": "keyword" },
+            "ip": { "type": "ip" },
+            "port": { "type": "long" },
+            "domain": { "type": "keyword" },
+            "mac": { "type": "keyword" }
+          }
+        },
+        "source": {
+          "properties": {
+            "address": { "type": "keyword" },
+            "ip": { "type": "ip" },
+            "port": { "type": "long" },
+            "domain": { "type": "keyword" },
+            "geo": {
+              "properties": {
+                "city_name": { "type": "keyword" },
+                "country_iso_code": { "type": "keyword" },
+                "location": { "type": "geo_point" }
+              }
+            }
+          }
+        },
+        "destination": {
+          "properties": {
+            "address": { "type": "keyword" },
+            "ip": { "type": "ip" },
+            "port": { "type": "long" },
+            "domain": { "type": "keyword" },
+             "geo": {
+              "properties": {
+                "city_name": { "type": "keyword" },
+                "country_iso_code": { "type": "keyword" },
+                "location": { "type": "geo_point" }
+              }
+            }
+          }
+        },
+        "host": {
+          "properties": {
+            "name": { "type": "keyword" },
+            "hostname": { "type": "keyword" },
+            "architecture": { "type": "keyword" },
+            "os": {
+              "properties": {
+                "family": { "type": "keyword" },
+                "name": { "type": "keyword" },
+                "platform": { "type": "keyword" },
+                "version": { "type": "keyword" },
+                "kernel": { "type": "keyword" }
+              }
+            }
+          }
+        },
+        "rule": {
+            "properties": {
+                "id": {"type": "keyword"},
+                "name": {"type": "keyword"},
+                "description": {"type": "text"}
+            }
+        },
+        "tags": { "type": "keyword" },
+        "labels": { "type": "object", "dynamic": true }
+      }
+    },
+    "composed_of": []
+  },
+  "_meta": {
+    "description": "Default index template for ZT Immune System logs, aligned with ECS.",
+    "managed_by": "ZT Immune System Configuration"
+  }
+}

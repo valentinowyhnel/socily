@@ -1,0 +1,166 @@
+# /infrastructure/kubernetes/network_policy.yaml
+# Kubernetes NetworkPolicy to enforce Zero Trust principles.
+
+# This policy provides a baseline:
+# 1. Default deny all ingress traffic to pods with the label 'app: zt-immune-system-component'.
+# 2. Default deny all egress traffic from pods with the label 'app: zt-immune-system-component'.
+# 3. Specific exceptions are then added.
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zt-default-deny
+  namespace: zt-immune-system # Assuming all components are in this namespace
+spec:
+  # Apply this policy to all pods that are part of the ZT Immune System
+  podSelector:
+    matchLabels:
+      app: zt-immune-system-component # Add this label to your Deployments/Pods
+  policyTypes:
+    - Ingress
+    - Egress
+  # Ingress: Default deny (empty ingress array means no ingress is allowed by default)
+  ingress: []
+  # Egress: Default deny (empty egress array means no egress is allowed by default)
+  egress: []
+
+---
+# Allow Egress from Mini Agents to IA Principale (Kafka)
+# This policy assumes:
+# - Mini Agent pods have label: 'app: zt-immune-system-component, role: mini-agent'
+# - IA Principale pods (specifically Kafka broker or a proxy to it) have label: 'app: zt-immune-system-component, role: ia-principale-kafka'
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mini-agents-to-ia-kafka
+  namespace: zt-immune-system
+spec:
+  podSelector:
+    matchLabels:
+      app: zt-immune-system-component # Applied to mini-agents
+      role: mini-agent                # Be more specific if needed, e.g., agent-detection, agent-response
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: zt-immune-system-component
+              role: ia-principale-kafka # Label for IA_Principale's Kafka endpoint
+      ports:
+        - protocol: TCP
+          port: 9092 # Kafka port
+    # Potentially allow DNS if needed for Kafka broker discovery (if not using fixed Service IP/name)
+    - to:
+        # - namespaceSelector: {} # Allows to any namespace... # This is too broad for DNS if kube-dns is in a specific ns
+        #   podSelector:         # ...that has these labels (typically kube-dns/coredns)
+        #     matchLabels:
+        #       k8s-app: kube-dns
+        # More secure: Allow to kube-system namespace where kube-dns/coredns typically resides
+        - namespaceSelector:
+            matchLabels:
+              # Adjust this if your DNS service is in a different namespace or has different labels
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns # Common label for CoreDNS/kube-dns pods
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# Allow Egress from IA Principale (Orchestrator) to Mini Agents (conceptual, e.g., if using direct calls or another message queue)
+# The user story mentions Mini Agents send to IA via Kafka, and Orchestrator receives commands from Dashboard.
+# If Orchestrator needs to send commands back to Mini Agents (e.g. via a different mechanism or if agents also listen on Kafka),
+# a similar policy would be needed. The user feedback specifically mentioned "egress: - to: [IA_Principale]",
+# which implies Mini-Agents to IA_Principale. Let's assume for now this is the primary controlled flow.
+# If IA_Principale (e.g. Orchestrator) needs to call specific Mini-Agent APIs, define here.
+
+# Example: Allow Dashboard Backend to IA Principale (Orchestrator/API endpoints)
+# Assuming:
+# - Dashboard backend pods have label: 'app: zt-immune-system-component, role: dashboard-backend'
+# - IA Principale pods (API part) have label: 'app: zt-immune-system-component, role: ia-principale-api'
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dashboard-to-ia-api
+  namespace: zt-immune-system
+spec:
+  podSelector:
+    matchLabels:
+      app: zt-immune-system-component
+      role: dashboard-backend
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: zt-immune-system-component
+              role: ia-principale-api # Label for IA_Principale's API
+      ports:
+        - protocol: TCP
+          port: 8000 # Assuming IA Principale API runs on port 8000 (FastAPI default)
+    # Allow DNS for service discovery if needed
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# Allow Ingress to Dashboard Frontend (e.g., from an Ingress Controller or LoadBalancer)
+# Assuming:
+# - Dashboard frontend pods have label: 'app: zt-immune-system-component, role: dashboard-frontend'
+# - An Ingress controller or specific set of pods needs to reach the frontend.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-dashboard-frontend
+  namespace: zt-immune-system
+spec:
+  podSelector:
+    matchLabels:
+      app: zt-immune-system-component
+      role: dashboard-frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # This example allows from any pod in the 'ingress-nginx' namespace
+        # Adapt this to your specific Ingress controller or source.
+        # For wider access (e.g. from LoadBalancer), this might be more open or use IP blocks.
+        - namespaceSelector:
+            matchLabels:
+              # name: ingress-nginx # Example for Nginx ingress controller namespace
+              # Using a common label for ingress controller namespaces:
+              ingress-controller.盾.io/custom-ingress: "true" # Replace with actual label of your ingress controller's namespace
+          # podSelector: {} # Optionally further restrict by pod labels in that namespace
+      ports:
+        - protocol: TCP
+          port: 80 # Assuming frontend serves on port 80 within the pod
+# Add other necessary policies:
+# - Communication between IA_Principale components if they are separate pods.
+# - Egress for IA_Principale to external Threat Intel APIs (if not through a proxy).
+# - Egress for Mini Agents for updates or specific tasks if absolutely necessary and controlled.
+# - Ingress to IA_Principale's Kafka from specific sources if not just internal Mini Agents.
+# - Ingress to Dashboard backend (e.g., from frontend or ingress controller, if not same-pod or service mesh)
+
+# General Note on Labels:
+# Consistent labeling of your pods is crucial for NetworkPolicies to work effectively.
+# Consider labels like:
+#   app: zt-immune-system-component (on all components)
+#   role: <ia-principale-kafka | ia-principale-api | mini-agent-detection | dashboard-backend | etc.>
+#   tier: <frontend | backend | messaging | database | agent>
+#
+# The 'role' label used here is just an example. Choose labels that best describe your components
+# and their communication patterns.
+# Using a common 'app: zt-immune-system-component' label helps in applying broad policies like default-deny.
