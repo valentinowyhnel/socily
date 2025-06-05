@@ -1,0 +1,50 @@
+# sandbox_config.yaml
+# Configuration des restrictions pour l'agent de détection en mode sandbox
+
+# Restrictions des ressources
+CPU: "10%"  # Limite d'utilisation CPU (ex: format cgroups)
+RAM: "50MB" # Limite de mémoire vive
+
+# Syscalls bloqués ou restreints
+# Ceci est une liste conceptuelle. L'application réelle dépendra
+# du mécanisme de sandboxing utilisé (Seccomp, AppArmor, etc.)
+Syscalls_bloques:
+  - execve    # Empêcher l'exécution de nouveaux programmes
+  - fork      # Empêcher la création de nouveaux processus (selon la stratégie)
+  - clone     # Alternative à fork
+  - ptrace    # Empêcher l'attachement à d'autres processus
+  - kill      # Restreindre la capacité de tuer des processus (sauf soi-même)
+  - mount     # Empêcher le montage de systèmes de fichiers
+  - umount    # Empêcher le démontage
+  - reboot    # Empêcher le redémarrage système
+  - socket    # Pourrait être restreint à certains types/domaines si l'agent ne doit pas communiquer librement
+  # - connect   # Si socket est permis, connect pourrait être restreint à des IPs/ports spécifiques (ex: Kafka)
+  # - accept    # Si l'agent ne doit pas être un serveur
+  - setuid    # Empêcher le changement d'UID
+  - setgid    # Empêcher le changement de GID
+  - chown     # Empêcher le changement de propriétaire de fichier
+  - chmod     # Empêcher le changement de permissions (sauf sur ses propres fichiers temporaires)
+  - mknod     # Empêcher la création de fichiers spéciaux (devices)
+  - sysctl    # Empêcher la modification des paramètres noyau
+  - kexec_load # Empêcher le chargement d'un nouveau noyau
+
+# Permissions de fichiers (conceptuel - AppArmor serait plus adapté)
+# Filesystem_readonly_paths:
+#   - /bin
+#   - /sbin
+#   - /usr/bin
+#   - /lib
+#   - /etc
+
+# Filesystem_writeable_paths:
+#   - /tmp/agent_detection_temp # Pour les fichiers temporaires
+#   - /var/log/agent_detection/ # Pour ses propres logs (si non géré par stdout/stderr)
+
+# Capacités Linux à dropper (si conteneurisé ou processus privilégié au départ)
+# Drop_capabilities:
+#   - CAP_SYS_ADMIN
+#   - CAP_NET_ADMIN # Sauf si l'analyse réseau brute est nécessaire et justifiée
+#   - CAP_SYS_PTRACE
+#   - CAP_SYS_BOOT
+#   - CAP_KILL
+#   - CAP_MKNOD

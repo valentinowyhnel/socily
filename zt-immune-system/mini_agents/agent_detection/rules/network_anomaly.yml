@@ -1,0 +1,49 @@
+# network_anomaly.yml
+# Placeholder Sigma rule for detecting a generic network anomaly
+
+title: Generic Suspicious Network Connection
+id: एलईडी-1b1a2171-7b39-44۳۹-۸۲۹۱-3c986048c1e5 # UUID généré aléatoirement
+status: experimental
+description: Detects a generic suspicious outbound network connection to a known bad domain or IP.
+author: ZT Immune System AI (Jules)
+date: 2023/10/27
+logsource:
+    category: network_traffic # ou proxy, firewall, dns, etc.
+    product: generic_product # ex: zeek, suricata, firewall_xyz
+detection:
+    keywords: # Ceci est une simplification extrême. Une vraie règle Sigma utiliserait des conditions structurées.
+        # Exemple de conditions logiques (non directement exécutable par le placeholder detector.py actuel):
+        # condition_destination_ip:
+        #   DestinationIp:
+        #     - '1.2.3.4' # Known bad IP
+        #     - '4.3.2.1'
+        # condition_destination_domain:
+        #   DestinationHostname:
+        #     - 'evil-domain.com'
+        #     - '*.bad-tld.net'
+        # condition_user_agent:
+        #   HttpUserAgent|contains:
+        #     - 'SuspiciousUA/1.0'
+        #     - 'KnownMalwareUA'
+        #
+        # Pour la simulation dans detector.py, nous utilisons une liste simple de mots-clés.
+        # Ces mots-clés seraient recherchés dans les métadonnées de flux simulées.
+        - 'evil-domain.com'
+        - 'suspicious_ua/1.0'
+        - '1.2.3.4' # Known bad IP
+        - 'CnC_pattern_in_url'
+    condition: keywords # Simplifié: la présence d'un mot-clé déclenche.
+                      # En vrai Sigma: "1 of condition_*" ou "condition_destination_ip and condition_user_agent"
+falsepositives:
+    - Legitimate traffic to a miscategorized domain/IP.
+    - Internal testing or scanning tools.
+level: medium # high, medium, low, informational
+tags:
+    - attack.command_and_control
+    - attack.t1071 # Application Layer Protocol
+    - attack.t1568 # Dynamic Resolution
+
+# Notes:
+# - This is a highly simplified placeholder. Real Sigma rules have a structured 'detection' field
+#   with selection, condition, and potentially timeframe logic.
+# - The current detector.py placeholder only uses the 'keywords' list for simulation.
