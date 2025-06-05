@@ -1,0 +1,38 @@
+# kibana.yml - Configuration for Kibana
+# Refer to the official Kibana documentation for all available options.
+
+server.name: "zt-immune-system-kibana"
+server.host: "0.0.0.0" # Listen on all interfaces
+# server.port: 5601 # Default Kibana port
+
+elasticsearch.hosts: ["http://elasticsearch:9200"] # Address of your Elasticsearch instance(s)
+# elasticsearch.username: "kibana_system" # If Elasticsearch security is enabled
+# elasticsearch.password: "password"      # If Elasticsearch security is enabled
+
+# logging.dest: stdout # Log to stdout, useful for containerized environments
+# logging.verbose: false
+
+# xpack.security.enabled: true # If you are using X-Pack security features
+# xpack.security.encryptionKey: "something_at_least_32_characters_long" # For encrypting session information
+# xpack.security.secureCookies: true # If Kibana is accessed over HTTPS
+
+# Mutual TLS configuration with Elasticsearch (conceptual placeholder)
+# This requires generating appropriate certificates and keys for Kibana and Elasticsearch.
+# elasticsearch.ssl.verificationMode: full # 'full' or 'certificate' or 'none'
+# elasticsearch.ssl.certificateAuthorities: ["/path/to/ca.crt"] # Path to CA certificate for Elasticsearch
+# elasticsearch.ssl.certificate: "/path/to/kibana_client.crt"   # Path to Kibana's client certificate
+# elasticsearch.ssl.key: "/path/to/kibana_client.key"           # Path to Kibana's client key
+# elasticsearch.ssl.keyPassphrase: "your_key_passphrase"        # If the key is encrypted
+
+# Server SSL for Kibana itself (for HTTPS access to Kibana UI)
+# server.ssl.enabled: true
+# server.ssl.certificate: "/path/to/kibana_server.crt"
+# server.ssl.key: "/path/to/kibana_server.key"
+
+# Other common settings:
+# kibana.index: ".kibana" # Default index for Kibana's own data
+# map.includeElasticMapsService: true # For GeoIP maps
+
+# Note: For production, ensure this file has appropriate permissions and secrets are handled securely.
+# Consider using environment variables for sensitive settings like passwords or API keys.
+# Example: elasticsearch.password: ${ELASTICSEARCH_PASSWORD}

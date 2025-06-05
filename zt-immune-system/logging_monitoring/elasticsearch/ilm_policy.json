@@ -1,0 +1,63 @@
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": {
+          "rollover": {
+            "max_age": "7d",
+            "max_primary_shard_size": "50gb"
+          },
+          "set_priority": {
+            "priority": 100
+          }
+        }
+      },
+      "warm": {
+        "min_age": "7d",
+        "actions": {
+          "forcemerge": {
+            "max_num_segments": 1
+          },
+          "shrink": {
+            "number_of_shards": 1
+          },
+          "allocate": {
+            "require": {
+              "data_tier": "warm"
+            }
+          },
+          "set_priority": {
+            "priority": 50
+          }
+        }
+      },
+      "cold": {
+        "min_age": "30d",
+        "actions": {
+          "freeze": {},
+          "allocate": {
+            "require": {
+              "data_tier": "cold"
+            }
+          },
+          "set_priority": {
+            "priority": 0
+          }
+        }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": {
+          "delete": {
+            "delete_searchable_snapshot": false
+          }
+        }
+      }
+    },
+    "_meta": {
+      "description": "ILM policy for ZT Immune System logs: 7 days hot, then warm, then cold after 30 days, deleted after 90 days.",
+      "managed_by": "ZT Immune System Configuration"
+    }
+  }
+}

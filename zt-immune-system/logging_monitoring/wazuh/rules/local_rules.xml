@@ -1,0 +1,45 @@
+<!-- local_rules.xml for Wazuh -->
+<!-- Add your custom rules here. These rules will be merged with the default Wazuh rules. -->
+
+<!-- Example Group for ZT Immune System Custom Rules -->
+<group name="zt_immune_system,">
+  <!--
+    Rule ID convention for local rules: 100000 - 119999
+  -->
+
+  <!-- Example Rule 1: Detect a specific custom log pattern from a ZT Agent -->
+  <rule id="100001" level="5">
+    <if_sid>530</if_sid> <!-- Example: Generic syslog rule -->
+    <match type="pcre2">AGENT_ZT_CUSTOM_EVENT_SIGNATURE</match>
+    <description>ZT Immune System: Custom Agent Event Detected.</description>
+    <group>custom_agent_events,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_4.12,</group>
+    <!-- Add MITRE ATT&CK mapping if applicable -->
+    <!-- <mitre>
+      <id>T1059</id> Command and Scripting Interpreter
+    </mitre> -->
+  </rule>
+
+  <!-- Example Rule 2: Alert on a critical action performed by a ZT Response Agent -->
+  <rule id="100002" level="10">
+    <if_sid>100001</if_sid> <!-- Example: If it's one of our custom agent events -->
+    <match type="pcre2">CRITICAL_RESPONSE_ACTION_TAKEN: BLOCK_IP</match>
+    <description>ZT Immune System: Critical Response Agent Action - IP Blocked.</description>
+    <group>response_actions,security_incident,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <!-- Example Rule 3: Correlating an event from IA Principale with a mini-agent alert -->
+  <!-- This would likely involve more complex logic, possibly using custom decoders -->
+  <!-- to extract specific fields and then correlating them here or via alerts from IA Principale. -->
+  <!-- For now, a simple example if IA Principale logs an event that needs Wazuh alerting. -->
+  <rule id="100003" level="8">
+    <decoded_as>json</decoded_as> <!-- Assuming IA Principale logs in JSON that Wazuh can decode -->
+    <field name="zt_module">ia_principale.orchestrator</field>
+    <field name="zt_event_type">high_priority_threat_escalation</field>
+    <description>ZT Immune System: IA Principale escalated a high priority threat.</description>
+    <group>ia_principale_events,threat_escalation,</group>
+  </rule>
+
+</group> <!-- zt_immune_system -->
+
+<!-- Make sure to restart Wazuh manager after adding or modifying local rules. -->
+<!-- /var/ossec/bin/wazuh-control restart -->

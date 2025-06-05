@@ -1,0 +1,36 @@
+<!-- custom_decoders.xml for Wazuh -->
+<!-- Add your custom decoders here. -->
+
+<!-- Example Decoder for a ZT Agent custom log format -->
+<!-- Suppose your ZT Agent log format is: -->
+<!-- ZT_AGENT_LOG: agent_id=agent_det_001 event_type=MEMORY_SCAN result=MALWARE_DETECTED details="Pattern XYZ found" -->
+
+<decoder name="zt-agent-custom-log-decoder">
+  <prematch type="pcre2">^ZT_AGENT_LOG: </prematch>
+</decoder>
+
+<decoder name="zt-agent-custom-log-fields-decoder">
+  <parent>zt-agent-custom-log-decoder</parent>
+  <regex type="pcre2">agent_id=(\S+) event_type=(\S+) result=(\S+) details="([^"]+)"</regex>
+  <order>zt_agent.id, zt_agent.event_type, zt_agent.result, zt_agent.details</order>
+  <!--
+    These decoded fields can then be used in Wazuh rules.
+    For example, a rule could check:
+    <field name="zt_agent.event_type">MEMORY_SCAN</field>
+    <field name="zt_agent.result">MALWARE_DETECTED</field>
+  -->
+</decoder>
+
+<!-- Example Decoder for JSON logs from IA Principale (if not using default JSON decoder) -->
+<!-- Wazuh has a default JSON decoder. This would be if you need specific pre-filtering or field extraction -->
+<!-- before the JSON decoder, or if the JSON is nested in a non-standard way. -->
+<!--
+<decoder name="zt-ia-principale-json-wrapper">
+  <type>json</type>
+  <prematch type="pcre2">^IA_PRINCIPALE_JSON_LOG:</prematch>
+  <plugin_decoder>JSON_Decoder</plugin_decoder>
+</decoder>
+-->
+
+<!-- Make sure to restart Wazuh manager after adding or modifying decoders. -->
+<!-- /var/ossec/bin/wazuh-control restart -->
