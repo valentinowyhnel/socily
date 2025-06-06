@@ -14,136 +14,282 @@ The IA Principale (Main AI) is the central intelligence and orchestration hub of
 -   Analyzing and correlating these events to identify and evaluate potential threats.
 -   Making decisions based on threat levels, system policies, and learned behaviors.
 -   Orchestrating responses by dispatching tasks to appropriate Mini-Agents (e.g., for deeper analysis, containment, remediation, or further data collection for learning).
+-   Providing a real-time communication interface via WebSockets for dashboards or other clients to receive alerts and send commands.
 -   Continuously learning and adapting from new data and the outcomes of its decisions (future capability).
 
 Key sub-modules within the IA Principale include:
 -   **`Orchestrator`**: The core component that processes events, evaluates threats, and decides on actions.
--   **`DataIngestion`**: Currently, this module includes the Kafka consumer logic for the `alerts_raw` topic, feeding data into the Orchestrator.
--   **`ThreatAnalyzer`**: (Conceptual) Would contain more sophisticated threat analysis logic, potentially including correlation engines and connections to threat intelligence feeds.
--   **`KafkaClient`**: Wrappers for Kafka producer and consumer functionalities, facilitating communication.
+-   **`DataIngestion`**: Includes Kafka consumer logic for the `alerts_raw` topic, feeding data into the Orchestrator.
+-   **`Communication`**:
+    -   `kafka_client.py`: Wrappers for Kafka producer and consumer functionalities.
+    -   `websocket_server.py`: Manages WebSocket connections, authentication, and real-time message exchange.
+-   **`Auth`**: Handles JWT-based authentication for secure API and WebSocket access.
 
 ## Technologies Used
 
 -   **Python 3.9+**: The primary programming language.
--   **`kafka-python`**: Python client for Apache Kafka, used for all message bus interactions.
--   **Various data processing and AI/ML libraries**: As the system evolves, this will include libraries such as:
-    -   `pandas`, `numpy` (for data manipulation - placeholder)
-    -   `scikit-learn` (for classical machine learning models - placeholder)
-    -   `TensorFlow` / `PyTorch` (for deep learning models - placeholder)
-    -   Other specialized libraries for NLP, anomaly detection, etc.
+-   **FastAPI**: For building the REST API and WebSocket endpoints.
+-   **Uvicorn**: ASGI server to run the FastAPI application.
+-   **`kafka-python`**: Python client for Apache Kafka.
+-   **`python-jose[cryptography]`**: For JWT creation and validation.
+-   **Pydantic**: For data validation and settings management (used by FastAPI).
+-   **Various data processing and AI/ML libraries**: (Future) `pandas`, `numpy`, `scikit-learn`, `TensorFlow`/`PyTorch`.
 
 ## Prerequisites
 
--   **Python**: Version 3.9 or newer is recommended.
+-   **Python**: Version 3.9 or newer.
 -   **`pip`**: The Python package installer.
--   **Virtual Environment (Recommended)**: To manage project dependencies.
--   **Running Kafka Broker**: A running instance of Apache Kafka (e.g., v2.x or 3.x) is essential as all primary inputs and outputs of the IA Principale are via Kafka topics.
+-   **Virtual Environment (Recommended)**.
+-   **Running Kafka Broker**: Essential for message bus operations.
 
 ## Project Setup and Installation
 
-1.  **Navigate to the Main AI directory**:
+1.  **Navigate to the project root directory**:
     ```bash
-    cd zt-immune-system/ia_principale
+    cd zt-immune-system
     ```
 
 2.  **Create and activate a Python virtual environment**:
     ```bash
     python -m venv venv
     ```
-    Activate the environment:
+    Activate:
     -   Linux/macOS: `source venv/bin/activate`
     -   Windows: `venv\Scripts\activate`
 
 3.  **Install dependencies**:
-    *A dedicated `requirements.txt` file within this `ia_principale` directory is highly recommended.* If it exists, run:
+    From the project root (`zt-immune-system`), install all dependencies listed in the main `requirements.txt`:
     ```bash
     pip install -r requirements.txt
     ```
-    If a dedicated `requirements.txt` is not present, ensure dependencies are installed from the main project `requirements.txt` (located at `zt-immune-system/requirements.txt`). Currently, the main project `requirements.txt` only lists `kafka-python`. Other libraries like data processing or ML libraries would need to be added either here or in the main file.
-
-    Example of manual installation if needed:
-    ```bash
-    pip install kafka-python pandas scikit-learn # Add other necessary libraries
-    ```
+    This file should include FastAPI, Uvicorn, kafka-python, python-jose, etc.
 
 ## Configuration
 
-Configuration is primarily managed through environment variables.
+Configuration is primarily managed through environment variables. Key variables include:
 
--   **Key Environment Variables**:
-    -   **`KAFKA_BROKER_ADDRESS`**: Crucial for operation. Specifies the address(es) of the Kafka broker(s).
-        -   Default: `"localhost:9092"` (if not set, as per component defaults).
-        -   Example: `export KAFKA_BROKER_ADDRESS="kafka1:9093,kafka2:9093"`
+-   **`KAFKA_BROKER_ADDRESS`**: Address(es) of Kafka brokers.
+    -   Default: `"localhost:9092"`
+-   **`JWT_SECRET_KEY`**: Secret key for encoding/decoding JWTs. **Must be changed for production.**
+    -   Default: `"your-default-super-secret-key-for-dev"` (Highly insecure)
+-   **`JWT_ALGORITHM`**: JWT signing algorithm.
+    -   Default: `"HS256"`
+-   **`JWT_ACCESS_TOKEN_EXPIRE_MINUTES`**: Expiry time for access tokens.
+    -   Default: `30`
+-   **`KAFKA_ALERTS_RAW_TOPIC`**: Topic for raw alerts consumed by the orchestrator.
+    -   Default: `"alerts_raw"`
+-   **`KAFKA_ALERTS_RAW_GROUP_ID`**: Consumer group ID for raw alerts.
+    -   Default: `"orchestrator_alerts_group_1"`
+-   **`KAFKA_USER_COMMANDS_TOPIC`**: Topic for user commands sent from WebSockets.
+    -   Default: `"user_commands"`
+-   **`KAFKA_FRONTEND_ALERTS_TOPIC`**: Topic for alerts to be broadcast to WebSocket clients.
+    -   Default: `"frontend_alerts"`
+-   **`KAFKA_FRONTEND_ALERTS_GROUP_ID`**: Consumer group ID for frontend alerts.
+    -   Default: `"frontend_alerts_websocket_group"`
 
--   **Kafka Topics**:
-    The IA Principale interacts with the following Kafka topics:
-    -   **Consumes from**:
-        -   `alerts_raw`: For receiving raw security alerts and events from detection agents and other sources.
-    -   **Publishes to (via Orchestrator)**:
-        -   `agent_tasks_analysis`: To dispatch tasks for detailed analysis to `agent_analysis` instances.
-        -   `agent_tasks_detection`: (Future) For configuring or tasking `agent_detection` instances.
-        -   `agent_tasks_response`: (Future) For dispatching response actions to `agent_response` instances.
-        -   `agent_tasks_learning`: (Future) For tasks related to distributed learning or data gathering for `agent_learning` instances.
+## Running the Main AI Server
 
-## Running the Main AI
-
-1.  **Ensure Kafka is Running**: Verify that your Apache Kafka broker is operational and accessible.
-2.  **Set Environment Variables**: Make sure the `KAFKA_BROKER_ADDRESS` environment variable is set correctly in your shell or environment configuration system.
+1.  **Ensure Kafka is Running**.
+2.  **Set Environment Variables** (as listed above, especially `KAFKA_BROKER_ADDRESS` and a secure `JWT_SECRET_KEY`).
+    Example for Linux/macOS:
     ```bash
-    export KAFKA_BROKER_ADDRESS="localhost:9092" # Example for Linux/macOS
-    # For Windows (cmd): set KAFKA_BROKER_ADDRESS=localhost:9092
-    # For Windows (PowerShell): $env:KAFKA_BROKER_ADDRESS="localhost:9092"
+    export KAFKA_BROKER_ADDRESS="localhost:9092"
+    export JWT_SECRET_KEY="a_very_strong_and_unique_secret_key_!@#$"
+    # Add other variables as needed
     ```
-3.  **Activate Virtual Environment**:
+3.  **Activate Virtual Environment** (if not already active).
+4.  **Run the FastAPI Application using Uvicorn**:
+    From the `zt-immune-system` project root:
     ```bash
-    # (If not already active)
-    cd zt-immune-system/ia_principale
-    source venv/bin/activate
+    uvicorn zt_immune_system.ia_principale.main:app --reload --port 8000
     ```
-4.  **Run the Main Application**:
-    ```bash
-    python main.py
-    ```
-    This will start the IA Principale, which typically includes initializing the Kafka consumer for alerts (via `data_ingestion.py`) and preparing the Orchestrator.
+    -   `--reload`: Enables auto-reloading for development. Uvicorn watches for code changes.
+    -   `--port 8000`: Specifies the port to run on.
 
 ## Key Modules & Logic Flow
 
 -   **`main.py`**:
-    -   The main entry point for the IA Principale application.
-    -   Initializes the `Orchestrator`.
-    -   Starts the Kafka consumer thread (via `data_ingestion.start_alerts_raw_consumer`) to listen for messages on the `alerts_raw` topic.
-    -   Handles graceful shutdown of components (e.g., closing the Orchestrator's Kafka producer and stopping the consumer thread).
+    -   FastAPI application entry point.
+    -   Manages lifecycle of background tasks (Kafka consumers, Orchestrator) using lifespan events.
+    -   Initializes and shares `KafkaProducerWrapper` (for WebSocket commands) and `ConnectionManager` (for WebSockets) via `app.state`.
 -   **`orchestrator.py`**:
-    -   Contains the `Orchestrator` class, which is the core decision-making and task-dispatching engine.
-    -   `process_event()`: Receives event data (typically from the Kafka consumer), evaluates threat levels, and decides on appropriate actions.
-    -   `dispatch_agent()`: Sends tasks/commands to specific Mini-Agent types via their designated Kafka topics using its internal Kafka producer.
+    -   Core decision-making engine. Processes events from `alerts_raw` topic.
+    -   Dispatches tasks to Mini-Agents via Kafka.
 -   **`data_ingestion.py`**:
-    -   `start_alerts_raw_consumer()`: This function runs in a separate thread (started by `main.py`). It initializes a `KafkaConsumerWrapper` to consume messages from the `alerts_raw` topic.
-    -   Received messages are passed to the `orchestrator_instance.process_event()` method for handling.
+    -   `start_alerts_raw_consumer()`: Consumes from `alerts_raw` topic, feeds to `Orchestrator`.
 -   **`communication/kafka_client.py`**:
-    -   Provides `KafkaProducerWrapper` and `KafkaConsumerWrapper` classes. These are general-purpose wrappers around the `kafka-python` library to simplify producing and consuming JSON messages to/from Kafka topics.
--   **`threat_analysis.py` (Conceptual / Placeholder)**:
-    -   This module would be responsible for more advanced threat analysis logic, such as event correlation, IOC enrichment, and risk scoring. The `Orchestrator` would likely call functions from this module.
--   **`nlp_module.py` (Conceptual / Placeholder)**:
-    -   If the system needs to process unstructured text data (e.g., from logs or threat reports), this module would contain Natural Language Processing capabilities.
--   **`ml_learning.py` (Conceptual / Placeholder)**:
-    -   This module would house the machine learning models, training pipelines, and prediction functions used by the IA Principale.
+    -   `KafkaProducerWrapper` and `KafkaConsumerWrapper` classes for Kafka interactions.
+-   **`communication/websocket_server.py`**:
+    -   Defines WebSocket endpoint (`/ws_comm/ws`).
+    -   `ConnectionManager`: Manages active WebSocket connections and broadcasts.
+    -   `start_frontend_alerts_kafka_consumer()`: Consumes from `frontend_alerts` topic and broadcasts to connected clients.
+-   **`auth.py`**:
+    -   Handles JWT creation and verification.
+    -   Provides `get_current_user_ws` dependency for authenticating WebSocket connections.
 
-## Directory Structure
+---
 
-A brief overview of the key directories and files within `ia_principale/`:
+## Real-time Communication API (WebSockets)
 
--   **`communication/`**:
-    -   `kafka_client.py`: Contains the Kafka producer and consumer wrapper classes.
--   **`event_processing/` (Conceptual - current logic in `orchestrator.py`)**:
-    -   Would contain more detailed event parsing, normalization, and enrichment logic.
--   **`models/` (Conceptual)**:
-    -   Could store Pydantic models for data structures, or serialized machine learning models.
--   **`main.py`**: Main application entry point.
--   **`orchestrator.py`**: Core orchestration logic.
--   **`data_ingestion.py`**: Kafka alert consumer setup.
--   **`requirements.txt` (Recommended)**: Should list Python dependencies specific to `ia_principale`.
--   **`README.md`**: This file.
+The IA Principale provides a WebSocket endpoint for real-time, bidirectional communication, primarily intended for dashboards or other monitoring/command clients.
+
+### Running the Server
+The WebSocket server is part of the main FastAPI application. Run the application as described in the "Running the Main AI Server" section:
+```bash
+uvicorn zt_immune_system.ia_principale.main:app --reload --port 8000
+```
+
+### Endpoint URL
+The WebSocket endpoint is available at:
+`ws://<host>:<port>/ws_comm/ws`
+Example: `ws://localhost:8000/ws_comm/ws`
+
+### Authentication
+-   **Method:** JSON Web Token (JWT)
+-   **Transmission:** The JWT must be provided as a query parameter named `token`.
+    Example: `ws://localhost:8000/ws_comm/ws?token=YOUR_VALID_JWT_HERE`
+-   **Token Acquisition:** Clients are expected to obtain a JWT through a separate authentication mechanism (e.g., a REST API login endpoint, which is not part of this specific `ia_principale` module but would be part of a complete ZT Immune System deployment). For development or testing, tokens can be generated using the `create_access_token` function in `auth.py` or other JWT tools.
+
+### Message Format (Client-to-Server)
+Clients should send messages to the server in JSON format. Each message must adhere to the following structure:
+
+```json
+{
+  "type": "message_type_string",
+  "data": {
+    // Payload specific to the message 'type'
+  },
+  "timestamp": "optional_iso_datetime_string_utc"
+  // Example: "2023-10-27T10:00:00Z" or "2023-10-27T10:00:00+00:00"
+}
+```
+-   `type` (str): Defines the purpose or category of the message.
+-   `data` (dict): A dictionary containing the actual payload for the message. The structure of `data` depends on the `type`.
+-   `timestamp` (str, optional): An ISO 8601 formatted datetime string indicating when the message was created by the client (preferably in UTC).
+
+### Key Client-to-Server Message Types
+
+1.  **`user_command`**
+    *   **Purpose:** Allows authenticated clients to send commands to the backend system (which are then relayed via Kafka).
+    *   **`data` Structure Example:**
+        ```json
+        {
+          "command_name": "block_ip", // Or "isolate_host", "run_scan", etc.
+          "target_node_id": "host_xyz123", // Optional, depending on command
+          "parameters": {
+            "ip_address": "192.168.1.100", // Example parameter
+            "duration_minutes": 60
+          }
+        }
+        ```
+    *   The server will acknowledge receipt and submission to Kafka (see Server-to-Client messages).
+
+2.  **`echo`**
+    *   **Purpose:** A simple message type for testing connectivity and message round-trip. The server will echo back the `data` and `timestamp` it receives.
+    *   **`data` Structure Example:**
+        ```json
+        {
+          "message": "Hello from client!",
+          "any_other_data": "can be included"
+        }
+        ```
+
+### Key Server-to-Client Message Types
+
+The server will send JSON messages to connected clients.
+
+1.  **`connection_ack`**
+    *   **Purpose:** Sent by the server immediately after a successful WebSocket connection and authentication.
+    *   **Payload Example:**
+        ```json
+        {
+          "type": "connection_ack",
+          "status": "Authentication successful",
+          "user_id": "user_subject_from_jwt"
+        }
+        ```
+
+2.  **`alert`**
+    *   **Purpose:** Broadcasts real-time security alerts (consumed from the `frontend_alerts` Kafka topic) to all connected clients.
+    *   **Payload Example (`data` field contains the actual alert from Kafka):**
+        ```json
+        {
+          "type": "alert",
+          "data": {
+            // Structure of the alert consumed from Kafka
+            "alert_id": "alert_uuid_12345",
+            "severity": "high",
+            "description": "Suspicious login attempt detected.",
+            "source_ip": "10.0.0.5",
+            "details": { /* ... more alert specific data ... */ }
+          },
+          "timestamp_utc": "server_iso_datetime_string_utc"
+        }
+        ```
+
+3.  **`command_ack`**
+    *   **Purpose:** Sent in response to a client's `user_command` message if the command was successfully submitted to the Kafka backend.
+    *   **Payload Example:**
+        ```json
+        {
+          "type": "command_ack",
+          "command_name": "block_ip", // From the original command
+          "status": "Command submitted to Kafka successfully.",
+          "details": { /* Original data from client's command */ }
+        }
+        ```
+
+4.  **`command_error`**
+    *   **Purpose:** Sent if a `user_command` could not be processed or relayed to Kafka.
+    *   **Payload Example:**
+        ```json
+        {
+          "type": "command_error",
+          "command_name": "block_ip",
+          "status": "Failed to submit command to Kafka backend.",
+          // Or "Command processing system unavailable."
+          "details": { /* Original data from client's command */ }
+        }
+        ```
+
+5.  **`echo_response`**
+    *   **Purpose:** Sent in response to a client's `echo` message.
+    *   **Payload Example:**
+        ```json
+        {
+          "type": "echo_response",
+          "original_data": { /* data from client's echo message */ },
+          "original_timestamp": "client_iso_datetime_string_or_null"
+        }
+        ```
+
+6.  **`error`** (General errors)
+    *   **Purpose:** Sent for other types of errors, such as invalid message structure from the client, unsupported message types, etc.
+    *   **Payload Example (Invalid Structure):**
+        ```json
+        {
+          "type": "error",
+          "message": "Invalid message structure.",
+          "details": [ /* Pydantic validation error details */ ]
+        }
+        ```
+    *   **Payload Example (Unsupported Type):**
+        ```json
+        {
+          "type": "error",
+          "message": "Message type 'some_unknown_type' is not supported."
+        }
+        ```
+
+### Dependencies
+Key Python libraries used for the WebSocket server include:
+-   FastAPI (for WebSocket handling)
+-   Uvicorn (ASGI server)
+-   kafka-python (for Kafka communication)
+-   python-jose[cryptography] (for JWT authentication)
+-   Pydantic (for message validation)
+
+Refer to the main `requirements.txt` in the project root for a complete list of dependencies.
 
 ---
 *This README provides an overview specific to the IA Principale. For information about the entire ZT Immune System project, refer to the main README.md in the project root.*

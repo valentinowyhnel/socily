@@ -1,116 +1,270 @@
 # main.py
-# Point d'entrée initialise tous les modules
-# Boucle principale de surveillance
+"""
+Main entry point for the ZT Immune System's IA Principale (Main AI) module.
 
-# Importations nécessaires (seront complétées au fur et à mesure)
+This module initializes and runs a FastAPI application that serves as the primary interface
+and orchestration hub. It manages several key background tasks:
+- An Orchestrator instance for processing security alerts and deciding on actions.
+- A KafkaProducer for sending commands (e.g., from WebSocket interactions) to Kafka.
+- A KafkaConsumer for ingesting raw security alerts from Kafka to be processed by the Orchestrator.
+- A WebSocket ConnectionManager for handling real-time communication with dashboard clients.
+- A KafkaConsumer for ingesting frontend-specific alerts from Kafka and broadcasting
+  them to connected WebSocket clients.
+
+The application lifecycle (startup and shutdown of these components) is managed
+by FastAPI's lifespan events.
+"""
+
+import asyncio
+import threading
+import os
+import logging
+
+from fastapi import FastAPI
+
 from . import orchestrator
 from .data_ingestion import start_alerts_raw_consumer
-# from . import utils # Pour les logs et la configuration
-import time
-import threading
-import os # For environment variable access
+# websocket_server_router will be imported AFTER app.state.connection_manager is set in startup.
+# from .communication.websocket_server import websocket_server_router
+from .communication.kafka_client import KafkaProducerWrapper
+# ConnectionManager will be imported in startup_event.
+# from .communication.websocket_server import ConnectionManager
 
-# Initialisation des logs (via utils.py)
-# logger = utils.setup_logger('main_logger', 'main.log')
-print("Initialisation du logger (placeholder)") # Placeholder
 
-# Kafka Configuration Constants (can be moved to a config file later)
-# These are defined globally here or loaded in if __name__ == "__main__":
-# KAFKA_BROKER = "localhost:9092"
-# ALERTS_RAW_TOPIC = "alerts_raw"
-# ALERTS_CONSUMER_GROUP_ID = "orchestrator_alerts_group_1"
-
-# Global variables for Orchestrator, Thread, and StopEvent
-# orch = None # Will be initialized in __main__
-consumer_thread = None
-stop_event = None
-
-def initialize_all(orchestrator_instance, kafka_broker, alerts_topic, consumer_group_id):
-    """Initialise les modules nécessaires, y compris le consommateur Kafka."""
-    global consumer_thread, stop_event # Allow modification of global variables
-
-    print("Main: Initializing Kafka alert consumer thread...")
-    stop_event = threading.Event()
-    consumer_thread = threading.Thread(
-        target=start_alerts_raw_consumer,
-        args=(
-            orchestrator_instance,
-            kafka_broker,
-            alerts_topic,
-            consumer_group_id,
-            stop_event
-        ),
-        daemon=True  # Daemon threads exit when the main program exits
+# Configure logger for this module
+logger = logging.getLogger(__name__)
+# Ensure basicConfig is called only if no handlers are configured for the root logger
+# or this specific logger. This helps prevent overriding Uvicorn's logging if it's already set up.
+if not logging.getLogger().hasHandlers() and not logger.hasHandlers():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(threadName)s - %(message)s'
     )
-    consumer_thread.start()
-    print("Main: Kafka alert consumer thread started.")
-    # logger.info("Modules initialisés avec succès.")
-    print("Modules initialisés avec succès (including consumer thread).")
 
+# Global variables for background task management for raw alerts consumer
+orch_instance: orchestrator.Orchestrator | None = None # Instance of the alert orchestrator
+raw_alerts_consumer_thread: threading.Thread | None = None # Thread for consuming raw alerts
+raw_alerts_stop_event: threading.Event | None = None # Event to signal raw alerts consumer to stop
+# Other components like KafkaProducerWrapper, ConnectionManager, and frontend alerts consumer
+# will be stored in app.state to be accessible across the application.
 
-def main_surveillance_loop():
-    """Boucle principale de surveillance. Pour l'instant, elle ne fait que dormir."""
-    # logger.info("Démarrage de la boucle principale de surveillance.")
-    print("Démarrage de la boucle principale de surveillance (main_surveillance_loop).")
-    # In a real scenario, this loop might do other things, or simply keep the main thread alive
-    # while daemon threads do work. For now, it just keeps the program running.
-    # The actual event processing from Kafka happens in the consumer_thread.
+# --- FastAPI Application Setup ---
+app = FastAPI(
+    title="ZT Immune System - IA Principale",
+    description="Module principal de l'IA pour la surveillance et l'orchestration des alertes.",
+    version="0.1.0",
+    # Lifespan context manager can also be used instead of @app.on_event,
+    # but @app.on_event is used here for clarity of individual startup/shutdown tasks.
+)
+
+# --- Lifespan Events (Startup and Shutdown) ---
+@app.on_event("startup")
+async def startup_event():
+    """
+    Handles application startup logic:
+    - Initializes the Orchestrator.
+    - Initializes the Kafka Producer for WebSocket command submissions.
+    - Initializes the WebSocket ConnectionManager for managing client connections.
+    - Starts a Kafka consumer thread for ingesting raw security alerts.
+    - Starts a Kafka consumer thread for ingesting alerts destined for frontend broadcast.
+    """
+    global orch_instance, raw_alerts_consumer_thread, raw_alerts_stop_event
+    logger.info("Application startup sequence initiated...")
+
+    # Kafka Configuration - Central place for Kafka broker address
+    kafka_broker = os.environ.get("KAFKA_BROKER_ADDRESS", "localhost:9092")
+    logger.info(f"Using Kafka Broker Address: {kafka_broker}")
+
+    # Config for raw alerts consumer (processed by orchestrator)
+    raw_alerts_topic_name = os.environ.get("KAFKA_ALERTS_RAW_TOPIC", "alerts_raw")
+    raw_alerts_group_id_name = os.environ.get("KAFKA_ALERTS_RAW_GROUP_ID", "orchestrator_alerts_group_1")
+
+    # Config for frontend alerts consumer (broadcast via WebSockets)
+    # These are stored on app.state to be accessible by the consumer function if needed,
+    # though passed directly in this setup.
+    app.state.frontend_alerts_topic = os.environ.get("KAFKA_FRONTEND_ALERTS_TOPIC", "frontend_alerts")
+    app.state.frontend_alerts_group_id = os.environ.get("KAFKA_FRONTEND_ALERTS_GROUP_ID", "frontend_alerts_websocket_group")
+
+    # Initialize Orchestrator
     try:
-        while not (stop_event and stop_event.is_set()): # Keep main thread alive until stop_event is set
-            # logger.debug("Cycle de surveillance principal...")
-            # print("Cycle de surveillance principal...") # Can be noisy
-            # This loop no longer directly fetches or processes events from a list.
-            # That logic is now handled by the Kafka consumer thread.
-            # This main loop can be used for other periodic tasks if needed, or just to keep alive.
-            time.sleep(1) # Check stop_event periodically
-    except KeyboardInterrupt:
-        # logger.info("Arrêt de la boucle de surveillance demandé par l'utilisateur (main_surveillance_loop).")
-        print("Arrêt de la boucle de surveillance demandé par l'utilisateur (main_surveillance_loop).")
-    # finally:
-        # Cleanup is now handled in the main __name__ == "__main__" block's finally clause.
-        # print("Nettoyage de main_surveillance_loop...")
+        orch_instance = orchestrator.Orchestrator()
+        logger.info("Core Orchestrator initialized successfully.")
+    except Exception as e:
+        logger.exception("Failed to initialize Orchestrator.")
+        # Depending on severity, might want to raise an error to stop app startup
+        # For now, log and continue, other components might still work.
 
-
-if __name__ == "__main__":
-    # logger.info("Démarrage de l'IA Principale.")
-    print("Démarrage de l'IA Principale.")
-
-    # Define Kafka constants here or load from a config
-    KAFKA_BROKER = os.environ.get("KAFKA_BROKER_ADDRESS", "localhost:9092")
-    ALERTS_RAW_TOPIC = "alerts_raw" # This topic name is specific to alerts
-    ALERTS_CONSUMER_GROUP_ID = "orchestrator_alerts_group_1"
-
-    orch = orchestrator.Orchestrator() # Initialize orchestrator first
-    # logger.info("Orchestrateur initialisé.")
-    print("Main: Orchestrateur initialisé.")
-
-    initialize_all(orch, KAFKA_BROKER, ALERTS_RAW_TOPIC, ALERTS_CONSUMER_GROUP_ID) # Initialize consumer thread
-
+    # Initialize KafkaProducerWrapper for WebSocket command submissions, stored in app.state
     try:
-        main_surveillance_loop() # Start the main loop
-    except Exception as e: # Catch any other unexpected errors from main_surveillance_loop
-        print(f"Main: Exception in main_surveillance_loop: {e}")
-    finally:
-        # logger.info("Nettoyage avant la fermeture (main)...")
-        print("Nettoyage avant la fermeture (main)...")
-
-        if stop_event:
-            print("Main: Signalling consumer thread to stop...")
-            stop_event.set()
-
-        if consumer_thread and consumer_thread.is_alive():
-            print("Main: Waiting for consumer thread to join...")
-            consumer_thread.join(timeout=10) # Wait for up to 10 seconds
-            if consumer_thread.is_alive():
-                print("Main: Consumer thread did not join in time.")
+        app.state.kafka_producer = KafkaProducerWrapper(bootstrap_servers=kafka_broker)
+        if app.state.kafka_producer.producer:
+            logger.info(f"KafkaProducer for WebSocket commands initialized (Broker: {kafka_broker}).")
         else:
-            print("Main: Consumer thread was not alive or not initialized.")
+            logger.error(f"KafkaProducer for WebSocket commands failed to connect (Broker: {kafka_broker}). WebSocket command sending will be impacted.")
+    except Exception as e:
+        logger.exception(f"Failed to initialize KafkaProducer for WebSocket commands (Broker: {kafka_broker}).")
+        app.state.kafka_producer = None # Ensure it's None if init fails
 
-        if orch: # orch is defined in this scope
-            print("Main: Closing orchestrator...")
-            orch.close()
+    # Initialize WebSocket ConnectionManager and store in app.state
+    try:
+        from .communication.websocket_server import ConnectionManager # Deferred import
+        app.state.connection_manager = ConnectionManager()
+        logger.info("WebSocket ConnectionManager initialized successfully.")
+    except Exception as e:
+        logger.exception("Failed to initialize WebSocket ConnectionManager.")
+        app.state.connection_manager = None # Ensure it's None
+
+
+    # --- Kafka Consumer for Raw Alerts (feeding the Orchestrator) ---
+    if orch_instance: # Only start if orchestrator is available
+        logger.info(f"Initializing Kafka consumer for raw alerts: Topic='{raw_alerts_topic_name}', GroupID='{raw_alerts_group_id_name}'")
+        raw_alerts_stop_event = threading.Event()
+        raw_alerts_consumer_thread = threading.Thread(
+            target=start_alerts_raw_consumer,
+            args=(
+                orch_instance,
+                kafka_broker,
+                raw_alerts_topic_name,
+                raw_alerts_group_id_name,
+                raw_alerts_stop_event
+            ),
+            name="KafkaRawAlertsConsumerThread",
+            daemon=True
+        )
+        try:
+            raw_alerts_consumer_thread.start()
+            logger.info("Kafka raw_alerts consumer thread started.")
+        except Exception as e:
+            logger.exception("Failed to start Kafka raw_alerts consumer thread.")
+    else:
+        logger.warning("Orchestrator not available, Kafka raw_alerts consumer thread will not start.")
+
+    # --- Kafka Consumer for Frontend Alerts (broadcasting to WebSockets) ---
+    if app.state.connection_manager: # Only start if ConnectionManager is available
+        from .communication.websocket_server import start_frontend_alerts_kafka_consumer # Deferred import
+
+        logger.info(f"Initializing Kafka consumer for frontend alerts: Topic='{app.state.frontend_alerts_topic}', GroupID='{app.state.frontend_alerts_group_id}'")
+        app.state.frontend_alerts_stop_event = threading.Event()
+        app.state.frontend_alerts_consumer_thread = threading.Thread(
+            target=start_frontend_alerts_kafka_consumer,
+            args=(
+                kafka_broker,
+                app.state.frontend_alerts_topic,
+                app.state.frontend_alerts_group_id,
+                app.state.connection_manager, # Pass the manager instance from app.state
+                app.state.frontend_alerts_stop_event
+            ),
+            name="KafkaFrontendAlertsConsumerThread",
+            daemon=True
+        )
+        try:
+            app.state.frontend_alerts_consumer_thread.start()
+            logger.info("Kafka frontend_alerts consumer thread started.")
+        except Exception as e:
+            logger.exception("Failed to start Kafka frontend_alerts consumer thread.")
+    else:
+        logger.warning("ConnectionManager not available, Kafka frontend_alerts consumer thread will not start.")
+
+    # Now that app.state.connection_manager is initialized (or attempted),
+    # we can import and include the router.
+    # The router itself should be robust to connection_manager being None if it failed init.
+    try:
+        from .communication.websocket_server import websocket_server_router
+        app.include_router(websocket_server_router, prefix="/ws_comm", tags=["WebSocket Communication"])
+        logger.info("WebSocket router included.")
+    except Exception as e:
+        logger.exception("Failed to include WebSocket router.")
+
+    logger.info("Application startup sequence completed.")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """
+    Handles application shutdown logic for all components.
+
+    This function is responsible for gracefully stopping all background threads
+    and closing any open resources like Kafka clients.
+    """
+    global orch_instance, raw_alerts_consumer_thread, raw_alerts_stop_event
+    logger.info("Application shutdown sequence initiated...")
+
+    # Stop Raw Alerts Kafka Consumer
+    if raw_alerts_stop_event:
+        logger.info("Signalling raw alerts Kafka consumer thread to stop...")
+        raw_alerts_stop_event.set()
+    if raw_alerts_consumer_thread and raw_alerts_consumer_thread.is_alive():
+        logger.info("Waiting for raw alerts Kafka consumer thread to join (timeout 10s)...")
+        raw_alerts_consumer_thread.join(timeout=10)
+        if raw_alerts_consumer_thread.is_alive():
+            logger.warning("Raw alerts Kafka consumer thread did not join in specified timeout.")
         else:
-            print("Main: Orchestrator was not initialized.")
+            logger.info("Raw alerts Kafka consumer thread joined successfully.")
+    else:
+        logger.info("Raw alerts Kafka consumer thread was not active at shutdown.")
 
-    # logger.info("IA Principale terminée.")
-    print("IA Principale terminée.")
+    # Stop Frontend Alerts Kafka Consumer
+    frontend_alerts_stop_event_instance = getattr(app.state, 'frontend_alerts_stop_event', None)
+    if frontend_alerts_stop_event_instance:
+        logger.info("Signalling frontend alerts Kafka consumer thread to stop...")
+        frontend_alerts_stop_event_instance.set()
+
+    frontend_consumer_thread_instance = getattr(app.state, 'frontend_alerts_consumer_thread', None)
+    if frontend_consumer_thread_instance and frontend_consumer_thread_instance.is_alive():
+        logger.info("Waiting for frontend alerts Kafka consumer thread to join (timeout 10s)...")
+        frontend_consumer_thread_instance.join(timeout=10)
+        if frontend_consumer_thread_instance.is_alive():
+            logger.warning("Frontend alerts Kafka consumer thread did not join in specified timeout.")
+        else:
+            logger.info("Frontend alerts Kafka consumer thread joined successfully.")
+    else:
+        logger.info("Frontend alerts Kafka consumer thread was not active at shutdown.")
+
+
+    # Close Orchestrator (which also closes its internal Kafka producer)
+    if orch_instance:
+        logger.info("Closing Orchestrator...")
+        try:
+            orch_instance.close()
+            logger.info("Orchestrator closed successfully.")
+        except Exception as e:
+            logger.exception("Error closing Orchestrator.")
+    else:
+        logger.info("Orchestrator was not initialized, no close action needed.")
+
+    # Close global KafkaProducerWrapper used by WebSockets for commands
+    kafka_producer_instance = getattr(app.state, 'kafka_producer', None)
+    if kafka_producer_instance:
+        logger.info("Closing KafkaProducer for WebSocket commands...")
+        try:
+            kafka_producer_instance.close()
+            logger.info("KafkaProducer for WebSocket commands closed successfully.")
+        except Exception as e:
+            logger.exception("Error closing KafkaProducer for WebSocket commands.")
+    else:
+        logger.info("KafkaProducer for WebSocket commands was not initialized, no close action needed.")
+
+    # ConnectionManager does not have an explicit close method in this design.
+    # If it did (e.g., to clean up external resources), it would be called here.
+    logger.info("Application cleanup finished.")
+
+
+# --- API Endpoints ---
+
+@app.get("/")
+async def root():
+    """
+    Provides a basic status message indicating the API is running.
+    """
+    logger.info("Root endpoint '/' accessed.")
+    return {"message": "IA Principale API is running. Welcome to the ZT Immune System."}
+
+# The WebSocket router is now included at the end of the startup_event,
+# once app.state.connection_manager is available and other necessary components are set up.
+# This ensures that the router and its dependencies are ready when requests come in.
+
+
+# --- Main execution (for running with Uvicorn) ---
+# To run the application:
+# uvicorn zt-immune-system.ia_principale.main:app --reload --port 8000
+# Ensure KAFKA_BROKER_ADDRESS and other relevant environment variables are set.

@@ -1,0 +1,23 @@
+fastapi>=0.100.0 # Specify a version or range if known, otherwise latest
+uvicorn[standard]>=0.20.0 # Includes pydantic, uvloop, etc.
+kafka-python>=2.0.0 # For Kafka client functionality
+python-jose[cryptography]>=3.3.0 # For JWT authentication
+
+# Other potential dependencies that might be used by the project (add as needed):
+# pydantic>=1.10.0 # For data validation (often pulled in by fastapi)
+# python-dotenv>=0.20.0 # For loading environment variables from .env files
+
+
+# For development & testing:
+pytest>=7.0.0
+pytest-asyncio>=0.18.0 # For testing async FastAPI code
+httpx>=0.23.0 # Required by TestClient
+requests>=2.25.0 # General purpose HTTP client, useful for some test scenarios
+# PyJWT is not strictly necessary if python-jose handles token creation for tests well.
+
+# black>=23.0.0
+# ruff>=0.1.0
+# mypy>=1.0.0
+# types-requests # if using requests with mypy
+# types-PyYAML # if using PyYAML with mypy
+# pre-commit
