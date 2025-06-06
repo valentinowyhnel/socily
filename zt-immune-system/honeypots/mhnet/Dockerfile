@@ -33,6 +33,9 @@ COPY mhnet_setup.sh /opt/mhnet/mhnet_setup.sh
 RUN chmod +x /opt/mhnet/mhnet_setup.sh && \
     chown honeypot_user:honeypot_user /opt/mhnet/mhnet_setup.sh
 
+# Create and set permissions for a data directory, useful if mounting a volume
+RUN mkdir -p /opt/mhnet/data && chown honeypot_user:honeypot_user /opt/mhnet/data
+
 # 5. Switch to the honeypot_user
 USER honeypot_user
 

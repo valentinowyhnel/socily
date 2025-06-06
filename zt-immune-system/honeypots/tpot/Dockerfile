@@ -40,6 +40,9 @@ RUN chown tpot_user:tpot_user /opt/tpot/config.yaml
 RUN chmod +x /opt/tpot/start.sh && \
     chown tpot_user:tpot_user /opt/tpot/start.sh
 
+# Create and set permissions for a data directory, useful if mounting a volume
+RUN mkdir -p /opt/tpot/data && chown tpot_user:tpot_user /opt/tpot/data
+
 # 7. Switch to tpot_user
 USER tpot_user
 
