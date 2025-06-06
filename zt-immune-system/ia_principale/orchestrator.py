@@ -5,10 +5,11 @@
 # - File de priorités des tâches
 # Utilise communication/kafka_client.py pour envoyer des commandes aux agents
 
-# from .communication import kafka_client # Supposons que kafka_client a une classe KafkaProducerWrapper
+from .communication.kafka_client import KafkaProducerWrapper
 # from . import utils # Pour les logs
 import queue # Pour la file de priorités
 import time # Added for timestamp in dispatch_agent and direct test
+import os # For environment variable access
 
 # logger = utils.setup_logger('orchestrator_logger', 'orchestrator.log')
 print("Initialisation du logger pour orchestrator (placeholder)") # Placeholder
@@ -17,10 +18,11 @@ print("Initialisation du logger pour orchestrator (placeholder)") # Placeholder
 # KAFKA_AGENT_TOPIC_PREFIX = "agent_tasks_" # Configurable
 
 class Orchestrator:
+    KAFKA_BROKER_ADDRESS = os.environ.get("KAFKA_BROKER_ADDRESS", "localhost:9092")
+
     def __init__(self):
-        # self.kafka_producer = kafka_client.KafkaProducerWrapper(KAFKA_BROKER)
-        # logger.info(f"Producteur Kafka initialisé pour {KAFKA_BROKER}.")
-        print(f"Producteur Kafka initialisé (placeholder)")
+        self.kafka_producer = KafkaProducerWrapper(Orchestrator.KAFKA_BROKER_ADDRESS)
+        print(f"Orchestrator: KafkaProducerWrapper initialisé pour {Orchestrator.KAFKA_BROKER_ADDRESS}.")
 
         # File de priorités pour les tâches. Les éléments pourraient être des tuples (priorité, tâche_data)
         # Priorité : 0 (plus haute) à N (plus basse)
@@ -74,9 +76,11 @@ class Orchestrator:
         # topic = f"{KAFKA_AGENT_TOPIC_PREFIX}{agent_type}"
         topic = f"agent_tasks_{agent_type}" # Placeholder
 
-        # self.kafka_producer.send_message(topic, task_payload)
-        # logger.info(f"Tâche envoyée à l'agent '{agent_type}' sur le topic '{topic}'.")
-        print(f"Tâche envoyée à l'agent '{agent_type}' sur le topic '{topic}' (placeholder).")
+        if self.kafka_producer and self.kafka_producer.producer: # Check if producer is available
+            self.kafka_producer.send_message(topic, task_payload)
+            print(f"Orchestrator: Tâche envoyée à l'agent '{agent_type}' sur le topic '{topic}'. Payload: {task_payload}")
+        else:
+            print(f"Orchestrator: Kafka producer non disponible. Tâche pour '{agent_type}' non envoyée via Kafka.")
 
         # Alternativement, ou en complément, ajouter à une file de tâches interne
         self.add_task_to_queue(priority, task_payload)
@@ -157,6 +161,14 @@ class Orchestrator:
             # logger.debug("File de tâches vide.")
             print("File de tâches vide.")
 
+    def close(self):
+        """Ferme les ressources de l'Orchestrateur, comme le producteur Kafka."""
+        if hasattr(self, 'kafka_producer') and self.kafka_producer:
+            self.kafka_producer.close()
+            print("Orchestrator: Kafka producer closed.")
+        else:
+            print("Orchestrator: Pas de producteur Kafka à fermer ou déjà fermé.")
+
 # Pour des tests unitaires ou un usage direct (moins courant pour un orchestrateur)
 if __name__ == "__main__":
     # import time # Import time for direct test # Already imported at the top
@@ -187,3 +199,4 @@ if __name__ == "__main__":
 
     # logger.info("Fin du test direct du module Orchestrator.")
     print("Fin du test direct du module Orchestrator.")
+    orchestrator_instance.close() # Clean up resources

@@ -12,6 +12,9 @@ import time # Pour les timestamps
 import json # Pour la manipulation de données
 import random # Importé pour la logique placeholder
 import os # Importé pour la création de dummy log file
+import threading
+from .communication.kafka_client import KafkaConsumerWrapper
+from .orchestrator import Orchestrator # For type hinting
 
 # logger = utils.setup_logger('data_ingestion_logger', 'data_ingestion.log')
 print("Initialisation du logger pour data_ingestion (placeholder)")
@@ -186,6 +189,64 @@ class DataIngestionModule:
     def normalize_scraped_data(self, scraped_content, url):
         # logger.debug(f"Normalisation des données scrapées de {url}...")
         return {"source": "web_scraper", "url": url, "content": scraped_content, "normalized_at": time.time()}
+
+
+def start_alerts_raw_consumer(orchestrator_instance: Orchestrator, kafka_broker_address: str, alerts_topic: str, consumer_group_id: str, stop_event: threading.Event):
+    """
+    Démarre un consommateur Kafka pour le topic des alertes brutes et traite les messages.
+    """
+    print(f"DataIngestion: Initializing Kafka consumer for topic '{alerts_topic}' at {kafka_broker_address} with group ID '{consumer_group_id}'")
+    consumer = KafkaConsumerWrapper(alerts_topic, kafka_broker_address, consumer_group_id) # topic, then server, then group_id
+
+    def on_alert_message(message_data):
+        print(f"DataIngestion: Received alert: {message_data}")
+        if orchestrator_instance:
+            try:
+                # Assuming process_event expects a dictionary.
+                # If message_data is not a dict, it might need transformation.
+                if isinstance(message_data, dict):
+                    orchestrator_instance.process_event(message_data)
+                else:
+                    print(f"DataIngestion: Received message_data is not a dict: {type(message_data)}. Cannot process with orchestrator.")
+            except Exception as e:
+                print(f"DataIngestion: Error processing event with orchestrator: {e}")
+        else:
+            print("DataIngestion: Orchestrator instance is None, cannot process event.")
+
+    print(f"DataIngestion: Starting to poll messages from '{alerts_topic}'...")
+    try:
+        while not stop_event.is_set():
+            if consumer and consumer.consumer:  # Check if consumer is valid and initialized
+                # Poll for messages. poll_messages calls the callback for each message.
+                # timeout_ms defines how long poll() will block if no messages are available.
+                # max_messages defines how many messages the callback will process in one poll_messages call.
+                consumer.poll_messages(on_alert_message, timeout_ms=1000, max_messages=10)
+                # Add a small sleep if poll_messages is non-blocking or returns immediately after timeout
+                # to prevent a tight loop if stop_event is not set and consumer is valid but no messages.
+                # However, consumer.poll already blocks for timeout_ms.
+                # If poll_messages itself has a loop driven by max_messages, it might not need this outer sleep.
+                # The current implementation of poll_messages in kafka_client.py might need review
+                # for how it handles max_messages > 1 and timeouts.
+                # For now, assuming poll_messages handles its own timing correctly.
+            else:
+                print("DataIngestion: Kafka consumer is not initialized or has failed. Attempting to re-initialize...")
+                stop_event.wait(5) # Wait for 5 seconds before trying to re-initialize
+                if stop_event.is_set(): # Check again if stop was signalled during wait
+                    break
+                consumer = KafkaConsumerWrapper(alerts_topic, kafka_broker_address, consumer_group_id)
+                if not (consumer and consumer.consumer):
+                    print("DataIngestion: Failed to re-initialize Kafka consumer after waiting. Stopping consumer thread.")
+                    break # Exit loop if re-initialization fails
+        print("DataIngestion: Stop event received or loop broken, exiting polling.")
+    except KeyboardInterrupt:
+        print("DataIngestion: KeyboardInterrupt received, stopping consumer...")
+    except Exception as e:
+        print(f"DataIngestion: An unexpected error occurred in consumer loop: {e}")
+    finally:
+        if consumer:
+            print("DataIngestion: Closing Kafka consumer.")
+            consumer.close()
+    print("DataIngestion: Consumer thread finished.")
 
 
 if __name__ == "__main__":
