@@ -1,0 +1,64 @@
+# humans.txt
+# We are people, not machines. Welcome to the ZT Immune System project.
+
+# TEAM & PROJECT CONTRIBUTORS
+Project Lead: [To Be Assigned - Core Architecture Team Lead]
+Project Management: [To Be Assigned]
+Security Architect: [To Be Assigned]
+AI Development Lead: [To Be Assigned]
+
+Core Development Team:
+    - Backend Engineers (FastAPI, Kafka Integration)
+    - Frontend Engineers (React, Shadcn UI, Tailwind CSS)
+    - AI/ML Engineers (Model Development, Agent Logic)
+    - DevOps Engineers (Kubernetes, Docker, CI/CD)
+    - You, the AI Agent Developer!
+
+Contact Email: project-ztis-contact@example-placeholder.com
+Project Repository: [Link to Git Repository, e.g., GitHub, GitLab]
+Site Last Updated: {{YYYY-MM-DD}} (Placeholder for dynamic update or manual entry)
+
+# ACKNOWLEDGEMENTS & THANKS
+This project is built upon the hard work and innovation of many open-source communities and cybersecurity researchers.
+Inspired by:
+    - The principles of Zero Trust Architecture.
+    - Advances in Artificial Intelligence for cybersecurity.
+    - The concept of digital immune systems.
+
+We extend our gratitude to the contributors of the core technologies used in this project.
+
+# TECHNOLOGY STACK (Illustrative - actual stack may vary)
+
+## Backend & Orchestration
+    - Python (FastAPI)
+    - Apache Kafka (for asynchronous messaging)
+    - PostgreSQL / NoSQL Database (for data persistence - specific choice TBD)
+    - Docker (for containerization)
+
+## Frontend Dashboard
+    - React.js
+    - Vite (or Create React App / Next.js - build tool)
+    - Shadcn UI (for UI components)
+    - Tailwind CSS (for styling)
+    - xterm.js (for interactive terminal)
+    - Chart.js / D3.js (for data visualization - planned)
+
+## AI & Machine Learning
+    - Python (TensorFlow / PyTorch - specific choice TBD)
+    - Scikit-learn
+    - Custom AI models for threat detection, analysis, and response
+
+## Infrastructure & DevOps
+    - Kubernetes (for orchestration)
+    - Terraform / Ansible (for IaC - planned)
+    - Prometheus / Grafana (for monitoring - planned)
+    - Elastic Stack / Wazuh (for logging and SIEM - planned)
+
+# PROJECT PHILOSOPHY
+To create a resilient, adaptive, and intelligent cybersecurity platform based on Zero Trust principles,
+leveraging AI to proactively defend against and respond to modern cyber threats.
+Our goal is to build a system that learns and evolves, much like a biological immune system.
+
+# CONTRIBUTING
+Interested in contributing? Please see our [CONTRIBUTING.md] (placeholder for link) guidelines.
+We welcome contributions from the community.

@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%; /* Light mode background - White */
+    --foreground: 240 10% 3.9%; /* Light mode foreground - Dark Gray */
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --primary: 240 5.9% 10%; /* Light mode primary - Near Black */
+    --primary-foreground: 0 0% 98%; /* Light mode primary foreground - Off White */
+
+    --secondary: 240 4.8% 95.9%; /* Light mode secondary - Light Gray */
+    --secondary-foreground: 240 5.9% 10%;
+
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%; /* Focus ring, often same as primary or a distinct accent */
+
+    --radius: 0.5rem; /* Default border radius for Shadcn components */
+  }
+
+  .dark {
+    --background: 240 10% 3.9%; /* Dark mode background - Dark Gray */
+    --foreground: 0 0% 98%; /* Dark mode foreground - Off White */
+
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 0% 98%; /* Dark mode primary - Off White */
+    --primary-foreground: 240 5.9% 10%; /* Dark mode primary foreground - Near Black */
+
+    --secondary: 240 3.7% 15.9%; /* Dark mode secondary - Darker Gray */
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%; /* A bit darker red for dark mode destructive */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 0 0% 98%; /* Focus ring for dark mode */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border; /* Apply border color by default */
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1; /* Enable common ligatures */
+  }
+}
