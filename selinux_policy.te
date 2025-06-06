@@ -1,0 +1,183 @@
+policy_module(honeypotcowrie, 1.0.0)
+
+########################################
+# Policy Information
+########################################
+# This SELinux policy module is designed for the Cowrie Honeypot running in a Docker container.
+# It defines a specific type for the Cowrie process (honeypot_cowrie_t) to confine it.
+#
+# How to compile and install this policy module:
+# 1. Ensure you have the 'selinux-policy-devel' (or equivalent, e.g., 'selinux-policy-dev' on Debian/Ubuntu)
+#    and 'setools-console' (for checkmodule, semodule_package) packages installed.
+#    sudo yum install selinux-policy-devel setools-console  (on RHEL/CentOS/Fedora)
+#    sudo apt-get install selinux-policy-dev setools         (on Debian/Ubuntu)
+#
+# 2. Compile the .te file into a .mod file:
+#    checkmodule -M -m -o honeypotcowrie.mod selinux_policy.te
+#
+# 3. Package the .mod file into a .pp (policy package) file:
+#    semodule_package -o honeypotcowrie.pp -m honeypotcowrie.mod
+#
+# 4. Install the policy package:
+#    sudo semodule -i honeypotcowrie.pp
+#
+# 5. To verify installation (optional):
+#    sudo semodule -l | grep honeypotcowrie
+#
+# How to run a Docker container with this SELinux type:
+#    docker run --rm -it --security-opt label=type:honeypot_cowrie_t <your-cowrie-image>
+#
+# How to label Cowrie data volumes if using specific custom types (not fully implemented in this example):
+#    If you define 'honeypot_cowrie_data_t' and want to label a host directory /srv/cowrie-data:
+#    sudo semanage fcontext -a -t honeypot_cowrie_data_t "/srv/cowrie-data(/.*)?"
+#    sudo restorecon -Rv /srv/cowrie-data
+#    Then mount it: docker run ... -v /srv/cowrie-data:/opt/cowrie/var --security-opt label=type:honeypot_cowrie_t ...
+#
+# Note: This policy is a starting point. Use 'audit2allow' on SELinux denial messages from
+#       /var/log/audit/audit.log to refine it based on actual Cowrie behavior.
+########################################
+
+require {
+    type container_t;
+    type container_file_t;
+    type container_runtime_t;
+    type proc_t;
+    type proc_net_t;
+    type port_t; # For binding to specific ports
+    type node_t; # For binding to all interfaces
+    type unreserved_port_t; # For ports > 1024
+    class tcp_socket { create_stream_socket_perms listen_stream_socket_perms accept_stream_socket_perms name_bind node_bind };
+    class udp_socket { create_socket_perms name_bind node_bind };
+    class netlink_route_socket { create_socket_perms nlmsg_read };
+    class capability { net_bind_service sys_chroot setuid setgid };
+    class file { manage_file_perms read_file_perms execute execute_no_trans };
+    class dir manage_dir_perms;
+    class lnk_file { read_lnk_file_perms };
+}
+
+########################################
+# Type definitions
+########################################
+
+# Type for the Cowrie honeypot process
+type honeypot_cowrie_t;
+# Type for the Cowrie executable files (e.g., python scripts)
+type honeypot_cowrie_exec_t;
+
+# Make honeypot_cowrie_t an application domain, transitioning from container_runtime_t
+# when honeypot_cowrie_exec_t is executed.
+application_domain(honeypot_cowrie_t, honeypot_cowrie_exec_t)
+# Allow honeypot_cowrie_t to be entered by the container runtime
+# This is often handled by application_domain, but can be made explicit
+# type_transition container_runtime_t honeypot_cowrie_exec_t : process honeypot_cowrie_t;
+
+# Define types for Cowrie's specific log and data files.
+# This allows for more granular control if desired.
+# For simplicity in this initial version, we'll primarily rely on container_file_t,
+# but these are here as examples for future refinement.
+# type honeypot_cowrie_log_t;
+# type honeypot_cowrie_data_t;
+# logging_log_file(honeypot_cowrie_log_t) # Macro to define it as a log file type
+# data_file_type(honeypot_cowrie_data_t)   # Macro to define it as a data file type
+
+########################################
+# Allow Rules for honeypot_cowrie_t
+########################################
+
+# Allow domain transition from container_t (if Docker daemon runs it that way initially)
+# This might be needed if the --security-opt label=type:honeypot_cowrie_t is not the first context.
+# allow container_t honeypot_cowrie_t:process transition;
+# allow container_t honeypot_cowrie_exec_t:file entrypoint;
+
+# Allow honeypot_cowrie_t to interact with files labeled container_file_t.
+# These are files created within the container or mounted volumes without specific relabeling.
+allow honeypot_cowrie_t container_file_t:file manage_file_perms;
+allow honeypot_cowrie_t container_file_t:dir manage_dir_perms;
+allow honeypot_cowrie_t container_file_t:lnk_file read_lnk_file_perms; # For symlinks
+
+# If using specific types for logs/data, uncomment and refine:
+# files_manage_generic_files(honeypot_cowrie_t, honeypot_cowrie_log_t, honeypot_cowrie_log_t)
+# files_manage_generic_dirs(honeypot_cowrie_t, honeypot_cowrie_log_t, honeypot_cowrie_log_t)
+# allow honeypot_cowrie_t honeypot_cowrie_log_t:file { create open read write append getattr setattr lock };
+# allow honeypot_cowrie_t honeypot_cowrie_log_t:dir { create add_name remove_name search rmdir open read write getattr setattr lock };
+#
+# files_manage_generic_files(honeypot_cowrie_t, honeypot_cowrie_data_t, honeypot_cowrie_data_t)
+# files_manage_generic_dirs(honeypot_cowrie_t, honeypot_cowrie_data_t, honeypot_cowrie_data_t)
+# allow honeypot_cowrie_t honeypot_cowrie_data_t:file { create open read write append getattr setattr lock };
+# allow honeypot_cowrie_t honeypot_cowrie_data_t:dir { create add_name remove_name search rmdir open read write getattr setattr lock };
+
+# Allow execution of its own executables (e.g. python scripts, if they are labeled honeypot_cowrie_exec_t)
+# The application_domain macro should handle basic execution permissions.
+# Additional rules might be needed if scripts execute other scripts/binaries.
+allow honeypot_cowrie_t honeypot_cowrie_exec_t:file { execute execute_no_trans read open getattr };
+
+# --- Network Permissions ---
+# Allow Cowrie to listen on its configured ports (e.g., 2222, 2223)
+# This assumes these are unreserved ports.
+# Replace 'unreserved_port_t' with a specific port type if you define one (e.g., cowrie_port_t).
+# For listening on all interfaces on a specific port:
+# allow honeypot_cowrie_t unreserved_port_t:tcp_socket name_bind;
+# Or, more generally for listening:
+allow honeypot_cowrie_t self:tcp_socket { create_stream_socket_perms listen_stream_socket_perms accept_stream_socket_perms };
+# Allow UDP sockets if Cowrie uses them (e.g., for some emulated services or DNS)
+allow honeypot_cowrie_t self:udp_socket { create_socket_perms name_bind node_bind };
+
+# Allow outgoing connections (e.g., for downloading files, interacting with URLs)
+# These are broad; restrict to specific ports/hosts if possible via policy or firewall.
+corenet_tcp_sendrecv_all_if(honeypot_cowrie_t)
+corenet_tcp_sendrecv_all_nodes(honeypot_cowrie_t)
+corenet_udp_sendrecv_all_if(honeypot_cowrie_t)
+corenet_udp_sendrecv_all_nodes(honeypot_cowrie_t)
+
+# Allow use of netlink for route information (some applications need this)
+allow honeypot_cowrie_t self:netlink_route_socket { create_socket_perms nlmsg_read };
+
+# --- System Information / Proc FS ---
+# Allow reading from /proc, common for many applications
+allow honeypot_cowrie_t proc_t:file read_file_perms;
+allow honeypot_cowrie_t proc_t:dir search;
+allow honeypot_cowrie_t proc_net_t:file read_file_perms; # For /proc/net entries
+allow honeypot_cowrie_t proc_net_t:dir search;
+
+# --- Capabilities ---
+# Allow binding to network ports (usually needed for listening services)
+# cap_net_bind_service is for ports < 1024. If Cowrie runs on >1024, this might not be strictly needed
+# but doesn't hurt to include if it ever changes or if other services are emulated.
+allow honeypot_cowrie_t self:capability net_bind_service;
+# Allow chroot if Cowrie uses it (common in honeypots to isolate commands)
+allow honeypot_cowrie_t self:capability sys_chroot;
+# Allow setuid/setgid if Cowrie drops privileges or manages users
+allow honeypot_cowrie_t self:capability setuid;
+allow honeypot_cowrie_t self:capability setgid;
+
+# --- Standard Operations ---
+# Allow basic process operations (signals, etc.)
+# These are often covered by domain.if or application_domain macro.
+# allow honeypot_cowrie_t self:process { signal sigchld fork };
+# allow honeypot_cowrie_t container_runtime_t:fd use;
+# allow honeypot_cowrie_t container_runtime_t:fifo_file { read_fifo_file_perms write_fifo_file_perms };
+
+# --- Booleans (examples of how to use them if applicable) ---
+# if (nis_enabled) {
+#   auth_use_nis(honeypot_cowrie_t)
+# }
+# if (container_manage_cgroup) {
+#   allow honeypot_cowrie_t self:cgroup { iterate create mounton rmdir setgid write read };
+# }
+
+########################################
+# Optional: File context definitions (if not relying solely on Docker's labeling)
+########################################
+# This section would be part of a separate .fc file (e.g., honeypotcowrie.fc)
+#
+# Example: If Cowrie is installed in /opt/cowrie inside the container and you want to label it specifically.
+# Note: Docker typically labels container contents as container_file_t.
+# This is more relevant if you are building a custom system image or have host mounts
+# that need specific labels beyond what Docker provides by default.
+#
+# /opt/cowrie(/.*)?      gen_context(system_u:object_r:honeypot_cowrie_exec_t,s0)
+# /opt/cowrie/bin/.*     -- gen_context(system_u:object_r:honeypot_cowrie_exec_t,s0)
+# /opt/cowrie/log(/.*)?  gen_context(system_u:object_r:honeypot_cowrie_log_t,s0)
+# /opt/cowrie/data(/.*)? gen_context(system_u:object_r:honeypot_cowrie_data_t,s0)
+
+# End of policy

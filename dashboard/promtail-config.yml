@@ -1,0 +1,34 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: honeypot_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: honeypot # Label to identify the logs from this job
+          __path__: /var/log/honeypot/*.log # Path to the log files to be scraped
+    # Example of adding more jobs for different log sources:
+    # - job_name: system_logs
+    #   static_configs:
+    #     - targets:
+    #         - localhost
+    #       labels:
+    #         job: varlogs
+    #         __path__: /var/log/*.log # Scrape all .log files in /var/log
+    #     - targets:
+    #         - localhost
+    #       labels:
+    #         job: messages
+    #         __path__: /var/log/messages # Scrape /var/log/messages file
+# Add more scrape_configs as needed for different log sources or applications.
+# Refer to Promtail documentation for more advanced configurations:
+# https://grafana.com/docs/loki/latest/clients/promtail/configuration/
