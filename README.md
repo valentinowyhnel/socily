@@ -1,41 +1,92 @@
 # ZT-Immune System
 
-Plateforme de cybersécurité Zero Trust basée sur une approche système immunitaire IA.
+Plateforme de cybersécurité **Zero Trust** basée sur une approche système immunitaire **IA**.
 
-## Structure du projet
+---
+
+![ZT-Immune Logo](./public/assets/logo512.png)
+
+## 🌐 Structure du projet
 
 Voir l'arborescence détaillée dans la documentation ou ci-dessous.
 
-## Démarrage rapide
+## ⚡ Démarrage rapide
 
-- Python 3.9+, Node.js 16+, Docker, Kubernetes, Terraform requis.
-- Voir `requirements.txt` et `dashboard/frontend/package.json` pour les dépendances.
+- Requis : `Python 3.9+`, `Node.js 16+`, `Docker`, `Kubernetes`, `Terraform`
+- Vérifiez les dépendances dans :
+  - `zt-immune-system/requirements.txt`
+  - `dashboard/frontend/package.json`
 
-## Architecture et Communication
+---
 
-Le système ZT-Immune utilise **Apache Kafka** pour la communication asynchrone entre ses différents composants, notamment entre l'IA Principale et les Mini-Agents.
+## 🧠 Architecture et Communication
 
-### Dépendances Kafka
-- **Bibliothèque Python**: `kafka-python` est requis pour l'interaction avec Kafka et est listé dans `zt-immune-system/requirements.txt`.
-- **Broker Kafka**: Une instance Kafka (version 2.x ou 3.x recommandée) doit être en cours d'exécution et accessible par les composants du système.
+Le système **ZT-Immune** utilise **Apache Kafka** pour la communication asynchrone entre ses différents composants, notamment entre l'**IA Principale** et les **Mini-Agents**.
 
-### Flux de Communication
-L'IA Principale (`ia_principale`) et les différents Mini-Agents (`mini_agents`) communiquent via des topics Kafka dédiés. Voici les principaux topics utilisés :
-- `alerts_raw`: Utilisé par les agents de détection pour envoyer des alertes brutes à l'IA Principale.
-- `agent_tasks_analysis`: Utilisé par l'Orchestrateur pour envoyer des tâches spécifiques aux agents d'analyse.
-- `agent_tasks_detection`: (Utilisation future) Pourrait être utilisé pour des tâches de configuration ou des demandes spécifiques aux agents de détection.
-- `agent_tasks_response`: (Utilisation future) Pourrait être utilisé pour coordonner les actions de réponse.
-- `agent_tasks_learning`: (Utilisation future) Pourrait être utilisé pour distribuer des tâches ou des données liées à l'apprentissage continu des agents.
+### 📦 Dépendances Kafka
 
-### Configuration de Kafka
-L'adresse du broker Kafka doit être configurée pour chaque composant qui interagit avec Kafka (Orchestrateur, Agent de Détection, Agent d'Analyse, etc.). Cette configuration est généralement gérée via une variable d'environnement nommée `KAFKA_BROKER_ADDRESS`. Si cette variable n'est pas définie, la valeur par défaut est souvent `"localhost:9092"`.
+- **Librairie Python** : [`kafka-python`](https://pypi.org/project/kafka-python/) (déclarée dans `requirements.txt`)
+- **Kafka Broker** : Une instance Kafka (v2.x ou v3.x recommandée) doit être disponible
 
-## Dossiers principaux
-- `ia_principale/` : Orchestrateur IA, apprentissage, contrôle Zero Trust
-- `mini_agents/` : Agents autonomes (détection, réponse, analyse, déploiement, apprentissage)
-- `dashboard/` : Interface admin (React + FastAPI)
-- `infrastructure/` : K8s, Docker, Terraform, sécurité
-- `threat_intel/` : Intelligence sur les menaces (MISP, CVE, STIX)
-- `honeypots/` : Déploiement et gestion de honeypots
-- `logging_monitoring/` : Elastic Stack, Wazuh
-- `docs/` : Documentation technique et utilisateur 
+### 🔁 Flux de Communication
+
+| Topic Kafka             | Rôle                                                                 |
+|------------------------|----------------------------------------------------------------------|
+| `alerts_raw`           | Alertes brutes envoyées par les agents de détection à l'IA Principale |
+| `agent_tasks_analysis` | Tâches d'analyse envoyées aux mini-agents                           |
+| `agent_tasks_detection`| (Futur) Configuration ou commandes aux agents de détection           |
+| `agent_tasks_response` | (Futur) Coordination des réponses                                    |
+| `agent_tasks_learning` | (Futur) Apprentissage continu distribué                             |
+
+### ⚙️ Configuration Kafka
+
+Chaque composant utilisant Kafka doit configurer la variable d'environnement `KAFKA_BROKER_ADDRESS`. Par défaut :
+```bash
+KAFKA_BROKER_ADDRESS=localhost:9092
+```
+
+---
+
+## 🗂️ Dossiers principaux
+
+| Dossier                   | Description                                                         |
+|--------------------------|---------------------------------------------------------------------|
+| `ia_principale/`         | Orchestrateur IA, contrôle Zero Trust, apprentissage                |
+| `mini_agents/`           | Agents autonomes (détection, réponse, analyse, apprentissage, etc.) |
+| `dashboard/`             | Interface admin (React, xterm.js, FastAPI, auth, voice+click UI)   |
+| `infrastructure/`        | Docker, K8s, Terraform, réseau, sécurité                            |
+| `threat_intel/`          | Intelligence sur les menaces (MISP, CVE, STIX, Yara)                |
+| `honeypots/`             | Déploiement et gestion des honeypots                                |
+| `logging_monitoring/`    | Centralisation logs/alertes avec Elastic Stack, Loki, Wazuh         |
+| `docs/`                  | Documentation technique et utilisateur                              |
+
+---
+
+## 🎨 Ressources UI/UX (frontend/public)
+
+| Fichier                      | Utilité                                         |
+|-----------------------------|--------------------------------------------------|
+| `index.html`                | Point d'entrée React                            |
+| `favicon.ico`               | Icône de l'onglet navigateur                    |
+| `manifest.json`             | Métadonnées PWA                                 |
+| `robots.txt`                | Configuration SEO                               |
+| `logo512.png`               | Logo principal haute résolution                 |
+| `logo192.png`               | Logo mobile ou favicon                          |
+| `assets/ai-avatar.png`      | Avatar IA (assistant vocal et visuel)           |
+| `assets/zero-trust-diagram.png` | Diagramme de l'architecture système         |
+| `assets/fonts/Inter.woff2`  | Typographie personnalisée                       |
+| `assets/docs/whitepaper.pdf`| Document technique à distribuer                 |
+
+---
+
+## 🧩 Interface Utilisateur (Dashboard React)
+
+- Authentification sécurisée (JWT via FastAPI)
+- Console interactive (xterm.js)
+- Dashboard de statut en temps réel (Mini-Agents, Alertes, Logs)
+- Assistant IA avec validation humaine (clic ou commande vocale)
+- UI moderne stylisée avec **Shadcn UI** + **Tailwind CSS**
+
+---
+
+> Projet conçu pour fournir une **cybersécurité adaptative, autonome, et auditable**, fondée sur une synergie IA-Humain.
