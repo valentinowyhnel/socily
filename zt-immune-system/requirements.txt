@@ -2,3 +2,4 @@ kafka-python
 python-jose[cryptography]
 passlib[bcrypt]
 pymisp
+requests
