@@ -12,6 +12,7 @@ import time # For timestamps
 import random # For simulation logic
 # import yaml # Pour charger sandbox_config.yaml (si besoin dans le code)
 # import yara # Placeholder pour le moteur YARA
+from ia_principale.communication.kafka_client import KafkaProducerWrapper
 # Placeholder pour un moteur Sigma (souvent une lib externe ou un script de conversion)
 
 # KAFKA_BROKER = "kafka_server:9092" # Configurable
@@ -22,10 +23,14 @@ import random # For simulation logic
 print("Initialisation du logger pour Agent Detection (detector.py) (placeholder)")
 
 class DetectionAgent:
+    KAFKA_BROKER_ADDRESS = os.environ.get("KAFKA_BROKER_ADDRESS", "localhost:9092")
+    KAFKA_ALERTS_TOPIC = "alerts_raw"
+
     def __init__(self, agent_id="agent_det_001"):
         self.agent_id = agent_id
-        # self.kafka_producer = KafkaProducerWrapper(KAFKA_BROKER) # Simulation
-        print(f"Agent de Détection {self.agent_id} initialisé. Producteur Kafka (simulé) prêt.")
+        # Access class attribute for Kafka broker address
+        self.kafka_producer = KafkaProducerWrapper(DetectionAgent.KAFKA_BROKER_ADDRESS)
+        print(f"DetectionAgent [{self.agent_id}]: KafkaProducerWrapper initialisé pour {DetectionAgent.KAFKA_BROKER_ADDRESS}.")
 
         self.yara_rules = None
         self.sigma_rules = {} # Dictionnaire pour stocker les règles Sigma parsées
@@ -116,9 +121,12 @@ class DetectionAgent:
             "alert_type": "detection_event",
             "data": alert_data
         }
-        # self.kafka_producer.send_message(KAFKA_ALERTS_TOPIC, payload)
-        # Using json.dumps for better readability of complex alert_data in logs
-        print(f"ALERTE ENVOYÉE (simulé via Kafka topic 'alerts_raw'): {json.dumps(payload, indent=2)}")
+        if self.kafka_producer and self.kafka_producer.producer:
+            self.kafka_producer.send_message(self.KAFKA_ALERTS_TOPIC, payload)
+            # Using json.dumps for better readability of complex alert_data in logs
+            print(f"DetectionAgent [{self.agent_id}]: Alerte envoyée au topic '{self.KAFKA_ALERTS_TOPIC}'. Payload: {json.dumps(payload)}")
+        else:
+            print(f"DetectionAgent [{self.agent_id}]: Kafka producer non disponible. Alerte non envoyée: {json.dumps(payload)}")
 
 
     def scan_memory(self, process_id=None):
@@ -183,6 +191,14 @@ class DetectionAgent:
 
         return simulated_alerts
 
+    def close(self):
+        """Ferme le producteur Kafka."""
+        if hasattr(self, 'kafka_producer') and self.kafka_producer:
+            self.kafka_producer.close()
+            print(f"DetectionAgent [{self.agent_id}]: Kafka producer closed.")
+        else:
+            print(f"DetectionAgent [{self.agent_id}]: Pas de producteur Kafka à fermer ou déjà fermé.")
+
 if __name__ == "__main__":
     print("\n--- Démarrage de l'Agent de Détection en mode direct ---")
 
@@ -236,5 +252,5 @@ if __name__ == "__main__":
     # except IOError as e:
     #     print(f"Erreur IO lors du nettoyage des fichiers de règles de test: {e}")
 
-
+    agent.close() # Close Kafka producer
     print("\n--- Fin du test direct de l'Agent de Détection ---")
