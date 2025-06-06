@@ -7,17 +7,22 @@ import asyncio # For WebSocket simulation
 import random # For generating dummy data
 import time # For timestamps
 
-# Placeholder for authentication module (auth.py)
-# from . import auth
-async def get_current_active_user_placeholder(token: str = Depends(lambda x: x.headers.get("Authorization"))):
-    print(f"Simulated auth: Verifying token {token}")
-    if token == "Bearer valid_dashboard_user_token":
-        return {"username": "dashboard_user", "roles": ["analyst"]}
-    # Example for a more specific check, not used by default in routes below for simplicity
-    # if token != "Bearer valid_dashboard_user_token_for_specific_route":
-    #      print("Simulated auth: Token invalid for this specific context.")
-    #      raise HTTPException(status_code=403, detail="Not authorized for this specific resource via placeholder")
-    return {"username": "dashboard_user_placeholder", "roles": ["analyst_placeholder"]} # Default placeholder user
+# Import the new API router
+from .api_routes import router as ai_api_router
+
+# Authentication imports
+from fastapi.security import OAuth2PasswordRequestForm
+from . import auth # This will import all names from auth.py
+from datetime import timedelta
+
+
+# The old get_current_active_user_placeholder is no longer needed
+# as auth.py provides the actual get_current_active_user.
+# async def get_current_active_user_placeholder(token: str = Depends(lambda x: x.headers.get("Authorization"))):
+#     print(f"Simulated auth: Verifying token {token}")
+#     if token == "Bearer valid_dashboard_user_token":
+#         return {"username": "dashboard_user", "roles": ["analyst"]}
+#     return {"username": "dashboard_user_placeholder", "roles": ["analyst_placeholder"]}
 
 
 app = FastAPI(
@@ -137,6 +142,25 @@ async def simulate_events():
 async def startup_event():
     print("FastAPI app startup: Initializing background tasks...")
     asyncio.create_task(simulate_events())
+
+# Token endpoint for authentication
+@app.post("/token", response_model=auth.Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = auth.authenticate_user(auth.fake_users_db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=401, # Corrected from status.HTTP_401_UNAUTHORIZED to an int
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": user.username, "scopes": user.roles}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# Include the AI System Interaction API router
+app.include_router(ai_api_router)
 
 if __name__ == "__main__":
     import uvicorn
