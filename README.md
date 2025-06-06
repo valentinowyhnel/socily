@@ -1,6 +1,7 @@
                                         # 🛡️ ZT-Immune System
 
-![Gemini_Generated_Image_63xkd663xkd663xk](https://github.com/user-attachments/assets/b2206321-6ad5-4e85-90dd-e3d1a8d46c24)
+![Gemini_Generated_Image_lu22mclu22mclu22](https://github.com/user-attachments/assets/74e5e571-6af4-4afc-8353-bf962c4012d0)
+
 
 
 **Plateforme de cybersécurité Zero Trust inspirée du système immunitaire humain et propulsée par une IA collaborative.**
