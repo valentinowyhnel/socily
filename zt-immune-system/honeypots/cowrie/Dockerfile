@@ -24,7 +24,7 @@ USER cowrie
 WORKDIR /home/cowrie
 
 # 6. Clone the official Cowrie git repository
-RUN git clone https://github.com/cowrie/cowrie.git cowrie
+RUN git clone --branch v2.6.1 https://github.com/cowrie/cowrie.git cowrie
 WORKDIR /home/cowrie/cowrie
 
 # 7. Create and activate a Python virtual environment
