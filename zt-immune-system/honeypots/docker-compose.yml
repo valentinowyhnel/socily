@@ -1,0 +1,83 @@
+version: '3.8'
+
+networks:
+  honeynet:
+    driver: bridge
+
+volumes:
+  cowrie_data:
+  mhnet_data:
+  # tpot_data: # T-Pot's data management is complex; manage within its own scripts or define more specifically later.
+
+services:
+  cowrie:
+    build:
+      context: ./cowrie
+    image: zt_cowrie_honeypot # Add a custom image name
+    container_name: zt_cowrie
+    restart: unless-stopped
+    ports:
+      - "2222:2222" # SSH
+      - "2223:2223" # Telnet
+    volumes:
+      - cowrie_data:/home/cowrie/cowrie/var/lib/cowrie # For persistent data like downloads, logs if not to stdout
+      # cowrie.cfg is part of the image. To override, uncomment below:
+      # - ./cowrie/cowrie.cfg:/home/cowrie/cowrie/etc/cowrie.cfg.dist:ro
+    networks:
+      - honeynet
+    security_opt:
+      - "no-new-privileges:true"
+      - "seccomp:./../infrastructure/docker/seccomp_profile.json" # Path relative to docker-compose.yml
+    environment:
+      - COWRIE_HOSTNAME=honeypot-ssh-01 # Example, can be overridden
+
+  mhnet:
+    build:
+      context: ./mhnet
+    image: zt_mhnet_honeypot # Add a custom image name
+    container_name: zt_mhnet
+    restart: unless-stopped
+    # Ports should be defined by the user as mhnet_setup.sh is a placeholder
+    # ports:
+    #   - "xxxx:xxxx"
+    volumes:
+      - mhnet_data:/opt/mhnet/data # Generic data volume
+      # mhnet_setup.sh is part of the image.
+    networks:
+      - honeynet
+    security_opt:
+      - "no-new-privileges:true"
+      - "seccomp:./../infrastructure/docker/seccomp_profile.json" # Path relative to docker-compose.yml
+    environment:
+      - MHNET_SERVICE_NAME=generic-honeypot-01 # Example
+
+  tpot:
+    build:
+      context: ./tpot
+    image: zt_tpot_honeypot # Add a custom image name
+    container_name: zt_tpot
+    restart: unless-stopped
+    # T-Pot requires extensive port mapping. This should be handled by its internal setup
+    # or explicitly defined here once T-Pot is configured within start.sh.
+    # For full T-Pot, many capabilities and host configurations might be needed.
+    # This service is a placeholder for an environment to run T-Pot components.
+    # volumes:
+    #   - tpot_data:/opt/tpot/data # Placeholder, T-Pot's data needs are complex
+    #   - ./tpot/config.yaml:/opt/tpot/config.yaml:ro # Copied by Dockerfile, mount if externalizing
+    #   - /var/run/docker.sock:/var/run/docker.sock # Only if T-Pot needs to manage sibling containers (DANGEROUS)
+    networks:
+      - honeynet
+    security_opt:
+      - "no-new-privileges:true"
+      # Seccomp profile might be too restrictive for full T-Pot, which may need more syscalls.
+      # For the current placeholder start.sh, it's fine.
+      # If T-Pot's start.sh tries to install/run many things, this might need adjustment or removal for the tpot service.
+      - "seccomp:./../infrastructure/docker/seccomp_profile.json" # Path relative to docker-compose.yml
+    environment:
+      - TPOT_FLAVOR=standard # Example, for tpot start.sh to potentially use
+    # cap_add:
+    #   - NET_ADMIN # Example, T-Pot components often need extra capabilities
+    #   - NET_RAW
+    # sysctls: # Example, some components might need these
+    #   - net.core.somaxconn=1024
+    #   - net.ipv4.ip_forward=1

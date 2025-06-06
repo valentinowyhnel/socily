@@ -1,0 +1,44 @@
+# T-Pot Configuration Placeholder
+# This file should be populated with actual T-Pot configuration directives
+# or configurations for the honeypots managed by T-Pot.
+
+version: "1.0"
+
+# Example: Define which honeypots T-Pot should manage or enable
+honeypots_enabled:
+  # - cowrie # SSH/Telnet honeypot
+  # - dionaea # Malware capturing honeypot
+  # - elasticpot # Elasticsearch honeypot
+  # - honeytrap # Generic TCP/UDP honeypot
+  # - adbhoney # Android Debug Bridge honeypot
+  # - citrixhoneypot # Citrix ADC honeypot
+  # - dicompot # DICOM honeypot
+  # - hellopot # Basic honeypot
+  # - heralding # Credentials checking honeypot
+  # - ipphoney # IPP honeypot
+  # - mailoney # SMTP honeypot
+  # - medpot # Medical device honeypot
+  # - rdpy # RDP honeypot
+  # - snare # Web application honeypot (Tanner)
+  # - tanner # Web application honeypot
+  placeholder_honeypot: true
+
+# Example: Configuration for backend services like ELK stack
+elk_stack:
+  enabled: false # Set to true if T-Pot should manage its own ELK stack
+  # external_elk_host: "elasticsearch.example.com"
+  # external_elk_port: 9200
+
+# Example: Network configurations
+network:
+  # T-Pot often takes over network interfaces or uses specific binding.
+  # This section would define such parameters.
+  # interface: "eth0"
+  # bind_ip: "0.0.0.0"
+  pass_through: true # Example for a mode where T-Pot might not directly bind to standard ports
+
+# Example: User-defined configurations
+user_config:
+  # admin_user: "tpotadmin"
+  # admin_password_hash: "..." # Store hashes, not plain text
+  some_api_key: "YOUR_API_KEY_HERE"
