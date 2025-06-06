@@ -16,7 +16,7 @@
 ![License](https://img.shields.io/github/license/zt-immune/zt-immune-system?style=for-the-badge)
 ![Open Source](https://img.shields.io/badge/open--source-yes-brightgreen?style=for-the-badge&logo=github)
 ![Contributeurs bienvenus](https://img.shields.io/badge/contributeurs-bienvenus-yellow?style=for-the-badge&logo=github)
-https://www.codetriage.com/valentinowyhnel/socily/badges/users.svg
+[![Open Source Helpers](https://www.codetriage.com/valentinowyhnel/socily/badges/users.svg)](https://www.codetriage.com/valentinowyhnel/socily)
 ---
 
 ## 🚀 Démarrage rapide
