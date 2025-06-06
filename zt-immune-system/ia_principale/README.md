@@ -1,7 +1,8 @@
 # ZT Immune System - IA Principale (Main AI)
 
 
-![Gemini_Generated_Image_jp9akvjp9akvjp9a](https://github.com/user-attachments/assets/20085505-158d-4184-bf0a-f6ac259964e5)
+![Gemini_Generated_Image_63xkd663xkd663xk](https://github.com/user-attachments/assets/6dfc739b-469a-431e-981f-c46dd8622eb6)
+
 
 
 
