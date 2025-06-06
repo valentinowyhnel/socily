@@ -1,92 +1,50 @@
-# ZT-Immune System
-
-Plateforme de cybersécurité **Zero Trust** basée sur une approche système immunitaire **IA**.
-
----
+# 🛡️ ZT-Immune System
 
 ![ZT-Immune Logo](./public/assets/logo512.png)
 
-## 🌐 Structure du projet
-
-Voir l'arborescence détaillée dans la documentation ou ci-dessous.
-
-## ⚡ Démarrage rapide
-
-- Requis : `Python 3.9+`, `Node.js 16+`, `Docker`, `Kubernetes`, `Terraform`
-- Vérifiez les dépendances dans :
-  - `zt-immune-system/requirements.txt`
-  - `dashboard/frontend/package.json`
+**Plateforme de cybersécurité Zero Trust inspirée du système immunitaire humain et propulsée par une IA collaborative.**
 
 ---
 
-## 🧠 Architecture et Communication
+![Langages](https://img.shields.io/badge/langages-Python%20%7C%20JavaScript-blue?style=for-the-badge&logo=python&logoColor=white)
+![Frontend](https://img.shields.io/badge/frontend-React%20%7C%20xterm.js-61dafb?style=for-the-badge&logo=react)
+![Backend](https://img.shields.io/badge/backend-FastAPI%20%7C%20Kafka-009688?style=for-the-badge&logo=fastapi)
+![DevOps](https://img.shields.io/badge/devops-Kubernetes%20%7C%20Docker%20%7C%20Terraform-purple?style=for-the-badge&logo=docker)
+![Monitoring](https://img.shields.io/badge/monitoring-Grafana%20%7C%20Loki-orange?style=for-the-badge&logo=grafana)
+![License](https://img.shields.io/github/license/zt-immune/zt-immune-system?style=for-the-badge)
+![Open Source](https://img.shields.io/badge/open--source-yes-brightgreen?style=for-the-badge&logo=github)
+![Contributeurs bienvenus](https://img.shields.io/badge/contributeurs-bienvenus-yellow?style=for-the-badge&logo=github)
 
-Le système **ZT-Immune** utilise **Apache Kafka** pour la communication asynchrone entre ses différents composants, notamment entre l'**IA Principale** et les **Mini-Agents**.
+---
 
-### 📦 Dépendances Kafka
+## 🚀 Démarrage rapide
 
-- **Librairie Python** : [`kafka-python`](https://pypi.org/project/kafka-python/) (déclarée dans `requirements.txt`)
-- **Kafka Broker** : Une instance Kafka (v2.x ou v3.x recommandée) doit être disponible
+> *Prérequis* : `Python 3.9+`, `Node.js 16+`, `Docker`, `Kubernetes`, `Terraform`
 
-### 🔁 Flux de Communication
+Installez les dépendances :
+- Backend Python : `zt-immune-system/requirements.txt`
+- Frontend React : `dashboard/frontend/package.json`
 
-| Topic Kafka             | Rôle                                                                 |
-|------------------------|----------------------------------------------------------------------|
-| `alerts_raw`           | Alertes brutes envoyées par les agents de détection à l'IA Principale |
-| `agent_tasks_analysis` | Tâches d'analyse envoyées aux mini-agents                           |
-| `agent_tasks_detection`| (Futur) Configuration ou commandes aux agents de détection           |
-| `agent_tasks_response` | (Futur) Coordination des réponses                                    |
-| `agent_tasks_learning` | (Futur) Apprentissage continu distribué                             |
+---
+
+## 🧬 Architecture et Communication
+
+Le système utilise **Apache Kafka** comme bus de messages asynchrone entre :
+- **IA Principale** (orchestrateur & décision)
+- **Mini-Agents** (détection, réponse, apprentissage, déploiement)
+
+### 📡 Kafka - Topics principaux
+
+| Topic Kafka             | Fonction                                                          |
+|------------------------|-------------------------------------------------------------------|
+| `alerts_raw`           | Alertes des agents envoyées à l'IA principale                     |
+| `agent_tasks_analysis` | Tâches analytiques envoyées par l'orchestrateur                   |
+| `agent_tasks_detection`| (à venir) Configuration ou consignes vers les agents de détection |
+| `agent_tasks_response` | (à venir) Coordination des réponses distribuées                   |
+| `agent_tasks_learning` | (à venir) Apprentissage partagé entre agents                      |
 
 ### ⚙️ Configuration Kafka
 
-Chaque composant utilisant Kafka doit configurer la variable d'environnement `KAFKA_BROKER_ADDRESS`. Par défaut :
+Définir la variable d’environnement :
 ```bash
 KAFKA_BROKER_ADDRESS=localhost:9092
-```
-
----
-
-## 🗂️ Dossiers principaux
-
-| Dossier                   | Description                                                         |
-|--------------------------|---------------------------------------------------------------------|
-| `ia_principale/`         | Orchestrateur IA, contrôle Zero Trust, apprentissage                |
-| `mini_agents/`           | Agents autonomes (détection, réponse, analyse, apprentissage, etc.) |
-| `dashboard/`             | Interface admin (React, xterm.js, FastAPI, auth, voice+click UI)   |
-| `infrastructure/`        | Docker, K8s, Terraform, réseau, sécurité                            |
-| `threat_intel/`          | Intelligence sur les menaces (MISP, CVE, STIX, Yara)                |
-| `honeypots/`             | Déploiement et gestion des honeypots                                |
-| `logging_monitoring/`    | Centralisation logs/alertes avec Elastic Stack, Loki, Wazuh         |
-| `docs/`                  | Documentation technique et utilisateur                              |
-
----
-
-## 🎨 Ressources UI/UX (frontend/public)
-
-| Fichier                      | Utilité                                         |
-|-----------------------------|--------------------------------------------------|
-| `index.html`                | Point d'entrée React                            |
-| `favicon.ico`               | Icône de l'onglet navigateur                    |
-| `manifest.json`             | Métadonnées PWA                                 |
-| `robots.txt`                | Configuration SEO                               |
-| `logo512.png`               | Logo principal haute résolution                 |
-| `logo192.png`               | Logo mobile ou favicon                          |
-| `assets/ai-avatar.png`      | Avatar IA (assistant vocal et visuel)           |
-| `assets/zero-trust-diagram.png` | Diagramme de l'architecture système         |
-| `assets/fonts/Inter.woff2`  | Typographie personnalisée                       |
-| `assets/docs/whitepaper.pdf`| Document technique à distribuer                 |
-
----
-
-## 🧩 Interface Utilisateur (Dashboard React)
-
-- Authentification sécurisée (JWT via FastAPI)
-- Console interactive (xterm.js)
-- Dashboard de statut en temps réel (Mini-Agents, Alertes, Logs)
-- Assistant IA avec validation humaine (clic ou commande vocale)
-- UI moderne stylisée avec **Shadcn UI** + **Tailwind CSS**
-
----
-
-> Projet conçu pour fournir une **cybersécurité adaptative, autonome, et auditable**, fondée sur une synergie IA-Humain.
