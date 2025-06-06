@@ -1,6 +1,7 @@
 # ZT Immune System - IA Principale (Main AI)
 
-![ChatGPT Image 6 juin 2025, 05_46_55](https://github.com/user-attachments/assets/e2bc1224-0791-44e7-b6a1-38726a5d208c)
+
+![Gemini_Generated_Image_jp9akvjp9akvjp9a](https://github.com/user-attachments/assets/20085505-158d-4184-bf0a-f6ac259964e5)
 
 
 
