@@ -1,0 +1,64 @@
+# Use the latest stable version of Alpine Linux as the base image
+# Alpine is chosen for its small size, which helps in creating lean images
+FROM alpine:latest
+
+# Add metadata labels
+LABEL maintainer="Your Name <your.email@example.com>"
+LABEL description="Base image for running the agent, with a non-root user and necessary utilities."
+
+# Environment variables for user and group
+# Using ARGs to allow build-time customization and ENVs to make them available in the container
+ARG AGENT_USER=agent
+ARG AGENT_GROUP=agent
+ARG AGENT_UID=1000
+ARG AGENT_GID=1000
+ENV AGENT_USER=${AGENT_USER}
+ENV AGENT_GROUP=${AGENT_GROUP}
+
+# Create a non-root user and group for the agent
+# Running applications as a non-root user is a security best practice
+# -S: create a system user
+# -G: add user to an existing group
+# -u: specify UID
+# -g: specify GID
+RUN addgroup -g ${AGENT_GID} -S ${AGENT_GROUP} && \
+    adduser -u ${AGENT_UID} -S ${AGENT_USER} -G ${AGENT_GROUP}
+
+# Install essential utilities:
+# - curl: for making HTTP requests, often needed for health checks or fetching data
+# - ca-certificates: for SSL/TLS connections to work correctly
+# --no-cache: ensures that the package index is updated and packages are installed without caching,
+#             reducing image size by not storing the apk cache.
+RUN apk update && \
+    apk add --no-cache \
+    curl \
+    ca-certificates && \
+    # Clean up apk cache to reduce image size (though --no-cache should handle most of it)
+    rm -rf /var/cache/apk/*
+
+# Create a directory for agent configuration
+# This directory will hold configuration files for the agent
+RUN mkdir -p /etc/agent && \
+    chown ${AGENT_USER}:${AGENT_GROUP} /etc/agent && \
+    chmod 700 /etc/agent # Only user can read/write/execute, group/other have no permissions
+
+# Create a directory for agent data or logs
+# This directory can be used by the agent to store persistent data or logs
+# Ensure it's writable by the agent user
+RUN mkdir -p /var/lib/agent && \
+    chown ${AGENT_USER}:${AGENT_GROUP} /var/lib/agent && \
+    chmod 700 /var/lib/agent
+
+# Set the working directory for subsequent commands
+# This is where the agent application will typically reside or run from
+WORKDIR /app
+
+# Copy application code (placeholder - actual copying will be in a subsequent Dockerfile that uses this base)
+# COPY --chown=${AGENT_USER}:${AGENT_GROUP} . .
+
+# Set the default user to run the application
+# This ensures that the container runs as the non-root user by default
+USER ${AGENT_USER}
+
+# Default command (placeholder - can be overridden by images building on this base)
+# CMD ["agent-application"]
